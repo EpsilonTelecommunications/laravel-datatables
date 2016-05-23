@@ -56,7 +56,7 @@ abstract class BaseColumn
 
         if (is_null($this->getName())) {
             $this->setName($value);
-			$name = Stringy::create($value)->humanize();
+            $name = (string) Stringy::create($value)->underscored()->humanize();
             $this->setTitle($name);
         }
 

@@ -53,8 +53,9 @@ abstract class BaseColumn
         $this->setColumnAttribute('columnName', $value);
 
         if (is_null($this->getName())) {
+            $this->setName($value);
 			$name = Stringy::create($value)->humanize();
-            $this->setName($name);
+            $this->setTitle($name);
         }
 
         return $this;

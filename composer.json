@@ -1,0 +1,21 @@
+{
+    "name": "SevenD/laravel-datatables",
+    "description": "PHP implementation for building server side AJAX endpoints and client side HTML/JavaScript",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Daniel Withams",
+            "email": "me@danwithams.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=5.5.9",
+        "laravel/framework": "5.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "SevenD\\LaravelDataTables\\": "src/LaravelDataTables/"
+        }
+    }
+}

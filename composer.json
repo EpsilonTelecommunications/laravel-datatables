@@ -11,7 +11,8 @@
     "minimum-stability": "dev",
     "require": {
         "php": ">=5.5.9",
-        "laravel/framework": "5.*"
+        "laravel/framework": "5.*",
+        "danielstjules/stringy": "~1.8"
     },
     "autoload": {
         "psr-4": {

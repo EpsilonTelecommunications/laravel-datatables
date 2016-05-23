@@ -1,5 +1,5 @@
 {
-    "name": "SevenD/laravel-datatables",
+    "name": "7d-digital/laravel-datatables",
     "description": "PHP implementation for building server side AJAX endpoints and client side HTML/JavaScript",
     "license": "MIT",
     "authors": [

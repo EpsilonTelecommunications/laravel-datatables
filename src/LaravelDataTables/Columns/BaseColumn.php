@@ -4,17 +4,26 @@ abstract class BaseColumn
 {
     protected $columnAttributes;
 
-    public function __construct($columnName = null, $settings = [])
+    public function __construct($columnName = null, $searchable = null, $visible = null, $name = null)
     {
         if ($columnName) {
             $this->setColumnName($columnName);
         }
 
-        foreach ($settings as $settingKey => $settingValue) {
-            $setter = 'set' . studly_case($settingKey);
-            if (is_callable([$this, $setter])) {
-                $this->$setter($settingValue);
-            }
+        if ($searchable) {
+            $this->setSearchable($searchable);
+        } else {
+            $this->setSearchable(true);
+        }
+
+        if ($visible) {
+            $this->setVisible($visible);
+        } else {
+           $this->setVisible(true);
+        }
+
+        if ($name) {
+            $this->setName($name);
         }
     }
 

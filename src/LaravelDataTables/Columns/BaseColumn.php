@@ -1,5 +1,7 @@
 <?php namespace SevenD\LaravelDataTables\Columns;
 
+use Stringy\Stringy;
+
 abstract class BaseColumn
 {
     protected $columnAttributes;

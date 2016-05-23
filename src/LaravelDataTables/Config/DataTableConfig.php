@@ -26,6 +26,7 @@ abstract class DataTableConfig
     public function setEndpoint($endpoint)
     {
         $this->endpoint = $endpoint;
+        return $this;
     }
 
     public function getQuery()
@@ -36,6 +37,7 @@ abstract class DataTableConfig
     public function setQuery($query)
     {
         $this->query = $query;
+        return $this;
     }
 
     public function query($closure)
@@ -46,6 +48,7 @@ abstract class DataTableConfig
     public function addColumn(BaseColumn $column)
     {
         $this->columns[$column->getName()] = $column;
+		return $this;
     }
 
     public function getColumns()

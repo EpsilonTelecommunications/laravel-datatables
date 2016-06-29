@@ -106,7 +106,7 @@ class PropelDataTablesDriver
     {
         $searches = $this->request->get('search', []);
 
-        if (isset($searches['value'])) {
+        if (isset($searches['value']) && strlen($searches['value'])) {
             foreach ($this->config->getColumns() as $columnConfig) {
                 if ($columnConfig->getSearchable()) {
                     if ($columnConfig instanceof JoinColumn) {

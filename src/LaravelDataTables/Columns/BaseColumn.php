@@ -6,26 +6,10 @@ abstract class BaseColumn
 {
     protected $columnAttributes;
 
-    public function __construct($columnName = null, $searchable = null, $visible = null, $name = null)
+    public function __construct($columnName = null, $settings = [])
     {
         if ($columnName) {
             $this->setColumnName($columnName);
-        }
-
-        if ($searchable) {
-            $this->setSearchable($searchable);
-        } else {
-            $this->setSearchable(true);
-        }
-
-        if ($visible) {
-            $this->setVisible($visible);
-        } else {
-           $this->setVisible(true);
-        }
-
-        if ($name) {
-            $this->setName($name);
         }
     }
 

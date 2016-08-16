@@ -8,4 +8,9 @@ class Column extends BaseColumn
     {
         parent::__construct($columnName, $settings);
     }
+    
+    public static function create($columnName = null, $settings = [])
+    {
+	    return new Column($columnName, $settings);
+    }
 }

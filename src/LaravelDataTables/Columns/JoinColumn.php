@@ -15,6 +15,11 @@ class JoinColumn extends BaseColumn
         parent::__construct(null, $settings);
     }
 
+	public static function create($columnDefinition = null, $settings = [])
+	{
+		return new JoinColumn($columnDefinition, $settings);
+	}
+
     public function setColumnDefinition($columnDefinition)
     {
         if (is_array($columnDefinition) && count($columnDefinition) == 2) {

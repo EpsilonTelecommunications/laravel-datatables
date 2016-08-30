@@ -43,6 +43,8 @@ abstract class DataTableConfig
     public function query($closure)
     {
         $closure($this->query);
+        
+        return $this;
     }
 
     public function addColumn(BaseColumn $column)

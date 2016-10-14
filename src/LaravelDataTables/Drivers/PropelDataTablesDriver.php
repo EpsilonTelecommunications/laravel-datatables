@@ -71,11 +71,11 @@ class PropelDataTablesDriver
     {
         $this->doOrderBy();
 
-        $recordsTotal = $this->query->find()->count();
+        $recordsTotal = $this->query->count();
 
         $this->doFilter();
 
-        $recordsFiltered = $this->query->find()->count();
+        $recordsFiltered = $this->query->count();
 
         $this->doLimit();
 

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<database name="mysql" defaultIdMethod="native" namespace="App\Models">
+
+    <table name="race">
+        <column name="id" type="integer" primaryKey="true" autoIncrement="true"/>
+        <column name="name" type="varchar" size="255"/>
+    </table>
+
+    <table name="gender">
+        <column name="id" type="integer" primaryKey="true" autoIncrement="true"/>
+        <column name="race_id" type="integer"/>
+        <column name="name" type="varchar" size="255"/>
+        <foreign-key foreignTable="race">
+            <reference local="race_id" foreign="id"/>
+        </foreign-key>
+    </table>
+
+    <table name="adult">
+        <column name="id" type="integer" primaryKey="true" autoIncrement="true"/>
+        <column name="gender_id" type="integer"/>
+        <column name="name" type="varchar" size="255"/>
+        <column name="date_of_birth" type="timestamp"  />
+        <foreign-key foreignTable="gender">
+            <reference local="gender_id" foreign="id"/>
+        </foreign-key>
+    </table>
+
+    <table name="child">
+        <column name="id" type="integer" primaryKey="true" autoIncrement="true"/>
+        <column name="gender_id" type="integer"/>
+        <column name="name" type="varchar" size="255"/>
+        <column name="date_of_birth" type="timestamp"  />
+        <foreign-key foreignTable="gender">
+            <reference local="gender_id" foreign="id"/>
+        </foreign-key>
+    </table>
+
+    <table name="child_adult" isCrossRef="true">
+        <column name="child_id" type="integer" primaryKey="true"/>
+        <column name="parent_id" type="integer" primaryKey="true"/>
+    </table>
+
+</database>

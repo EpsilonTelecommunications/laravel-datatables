@@ -1,10 +1,14 @@
 <?php namespace SevenD\LaravelDataTables\Drivers;
 
+use Propel\Generator\Model\PropelTypes;
+use Propel\Runtime\ActiveQuery\Criteria;
+use SevenD\LaravelDataTables\Columns\BaseColumn;
 use SevenD\LaravelDataTables\Config\DataTableConfig;
 use SevenD\LaravelDataTables\Columns\Column;
 use SevenD\LaravelDataTables\Columns\JoinColumn;
 use Illuminate\Http\Request;
 use Propel\Runtime\ActiveQuery\Join;
+use Exception;
 
 class PropelDataTablesDriver
 {
@@ -37,27 +41,41 @@ class PropelDataTablesDriver
                 $className = end($className);
             }
 
-            $rowOutput[$className . 'Object'] = $row;
-            $rowData = $row->toArray();
-
-            foreach ($this->config->getColumns() as $column) {
-                if ($column instanceof JoinColumn) {
-                    $getFunction = 'get' . $column->getJoinName();
-                    $joinModel = $row->$getFunction();
-
-                    // Handle Nulls from Left join queries
-                    if ($joinModel) {
-                        // Not Null
-                        $rowOutput[$column->getName()] = $joinModel->toArray()[$column->getColumnName()];
+            try {
+                $rowOutput[$className . 'Object'] = $row;
+                foreach ($this->config->getColumns() as $column) {
+                    if ($column instanceof JoinColumn) {
+                        $joinModel = $row;
+                        foreach ($column->getJoins() as $join) {
+                            $getFunction = 'get' . $join['Name'];
+                            if (is_callable([$joinModel, $getFunction])) {
+                                $joinModel = $joinModel->$getFunction();
+                                if (is_null($joinModel) && $join['JoinType'] == JoinColumn::INNER_JOIN) {
+                                    throw new Exception; // Dont want this row as we cannot 'join'
+                                }
+                            } else {
+                                $rowOutput[$column->getName()] = '';
+                            }
+                        }
+                        if ($joinModel) {
+                            $getFunction = sprintf('get%s', $column->getColumnName());
+                            if (is_callable([$joinModel, $getFunction])) {
+                                $rowOutput[$column->getName()] = $joinModel->$getFunction();
+                            }
+                        } else {
+                            $rowOutput[$column->getName()] = '';
+                        }
                     } else {
-                        // Null
-                        $rowOutput[$column->getName()] = '';
+                        $getFunction = sprintf('get%s', $column->getColumnName());
+                        if (is_callable([$row, $getFunction])) {
+                            $rowOutput[$column->getName()] = $row->$getFunction();
+                        }
                     }
-                } else {
-                    $rowOutput[$column->getName()] = $rowData[$column->getColumnName()];
                 }
+                $output[] = $rowOutput;
+            } catch (Exception $e) {
+                // Mute
             }
-            $output[] = $rowOutput;
         }
 
         return [
@@ -69,6 +87,8 @@ class PropelDataTablesDriver
 
     private function runQuery()
     {
+        $this->doJoins();
+
         $this->doOrderBy();
 
         $recordsTotal = $this->query->count();
@@ -84,6 +104,20 @@ class PropelDataTablesDriver
             'recordsFiltered' => $recordsFiltered,
             'recordsTotal' => $recordsTotal,
         ];
+    }
+
+    private function doJoins()
+    {
+        foreach ($this->config->getColumns() as $column) {
+            if ($column instanceof JoinColumn) {
+                $query = $this->query;
+                foreach ($column->getJoinSettings() as $settings) {
+                    $query->join($settings['Name'], $settings['JoinType']);
+                    $useQueryFunction = sprintf('use%sQuery', $settings['Name']);
+                    $query = $query->$useQueryFunction();
+                }
+            }
+        }
     }
 
     private function doOrderBy()
@@ -109,16 +143,51 @@ class PropelDataTablesDriver
         if (isset($searches['value']) && strlen($searches['value'])) {
             foreach ($this->config->getColumns() as $columnConfig) {
                 if ($columnConfig->getSearchable()) {
+                    $query = $this->query;
                     if ($columnConfig instanceof JoinColumn) {
-                        $column = implode('.', [$columnConfig->getJoinName(), $columnConfig->getColumnName()]);
+                        foreach ($columnConfig->getJoinSettings() as $settings) {
+                            $query->join($settings['Name'], $settings['JoinType']);
+                            $useQueryFunction = sprintf('use%sQuery', $settings['Name']);
+                            $query = $query->_or()->$useQueryFunction();
+                        }
+
+                        if (!$this->isNeverSearchable($query, $columnConfig)) {
+                            $query->filterBy($columnConfig->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
+                        }
+
+                        foreach (array_reverse($columnConfig->getJoinSettings()) as $settings) {
+                            $query = $query->endUse()->_or();
+                        }
                     } else {
                         $column = $this->query->getTableMap()->getPhpName() . '.' . $columnConfig->getColumnName();
+                        if (!$this->isNeverSearchable($this->query, $columnConfig)) {
+                        $this->query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
+                        }
                     }
-
-                    $this->query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
                 }
             }
         }
+    }
+
+    private function isNeverSearchable($query, $columnConfig)
+    {
+        $tableMap = $query->getTableMap();
+        $columnName = snake_case($columnConfig->getColumnName());
+        if ($tableMap->hasColumn($columnName)) {
+            return in_array(
+                $tableMap->getColumn($columnName)->getType(),
+                [
+                    PropelTypes::BINARY,
+                    PropelTypes::BLOB,
+                    PropelTypes::BLOB_NATIVE_TYPE,
+                    PropelTypes::BOOLEAN,
+                    PropelTypes::TIMESTAMP,
+                    PropelTypes::DATE,
+                    PropelTypes::TIME
+                ]
+            );
+        }
+        return true;
     }
 
     public function doLimit()

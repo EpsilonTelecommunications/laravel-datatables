@@ -4,12 +4,22 @@ use SevenD\LaravelDataTables\Columns\BaseColumn;
 
 class JoinColumn extends BaseColumn
 {
-    protected $joinName;
+    const LEFT_JOIN = 'LEFT';
+    const INNER_JOIN = 'INNER';
+
+    protected $joins = [];
 
     public function __construct($columnDefinition = null, $settings = [])
     {
         if ($columnDefinition) {
-            $this->setColumnDefinition($columnDefinition);
+            $name = implode('', array_map(function($item) {
+                return (is_array($item)) ? $item['Name'] : $item;
+            }, $columnDefinition));
+
+            $this->setName($name);
+            $this->setColumnName(array_pop($columnDefinition));
+
+            $this->setJoins($columnDefinition);
         }
 
         parent::__construct(null, $settings);
@@ -20,23 +30,52 @@ class JoinColumn extends BaseColumn
 		return new JoinColumn($columnDefinition, $settings);
 	}
 
-    public function setColumnDefinition($columnDefinition)
+    public function setJoins($joins)
     {
-        if (is_array($columnDefinition) && count($columnDefinition) == 2) {
-            $this->setJoinName($columnDefinition[0]);
-            $this->setColumnName($columnDefinition[1]);
-
-            $this->setName($columnDefinition[0] . $columnDefinition[1]);
+        $newJoins = [];
+        $defaultJoinData = [
+            'JoinType' => self::LEFT_JOIN,
+        ];
+        foreach ($joins as $key => $join) {
+            if (is_array($join)) {
+                $newJoins[] = array_merge($defaultJoinData, [
+                    'Name' => $key,
+                ], $join);
+            } else {
+                $newJoins[] = array_merge($defaultJoinData, ['Name' => $join]);
+            }
         }
+        $this->joins = $newJoins;
+    }
+
+    public function getJoins()
+    {
+        return $this->joins;
+    }
+
+    public function getJoinSettings($index = null)
+    {
+        if (is_null($index)) {
+            return $this->joins;
+        } elseif (isset($this->joins[$index])) {
+            return $this->joins[$index];
+        }
+
+        return null;
     }
 
     public function getJoinName()
     {
-        return $this->joinName;
+        $joinNames = [];
+        foreach ($this->getJoins() as $join) {
+            $joinNames[] = $join['Name'];
+        }
+        return implode('.', $joinNames);
     }
 
     public function setJoinName($joinName)
     {
         $this->joinName = $joinName;
+        $this->setColumnName($this->joinName);
     }
 }

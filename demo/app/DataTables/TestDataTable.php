@@ -1,8 +1,10 @@
 <?php namespace App\DataTables;
 
+use App\Models\Adult;
 use App\Models\AdultQuery;
 use App\Models\ParentQuery;
 use SevenD\LaravelDataTables\Columns\Column;
+use SevenD\LaravelDataTables\Columns\GroupedJoinColumn;
 use SevenD\LaravelDataTables\Columns\JoinColumn;
 use SevenD\LaravelDataTables\Config\DataTableConfig;
 
@@ -28,6 +30,8 @@ class TestDataTable extends DataTableConfig
                 'Name' => 'Gender',
                 'JoinType' => JoinColumn::LEFT_JOIN,
             ], 'Name']));
+
+        $this->addColumn(GroupedJoinColumn::create(['Child', 'Name']));
 
 //        $this->addColumn(JoinColumn::create(['Gender', 'Name']));
 

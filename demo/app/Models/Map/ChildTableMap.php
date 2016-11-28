@@ -159,6 +159,14 @@ class ChildTableMap extends TableMap
     1 => ':id',
   ),
 ), null, null, null, false);
+        $this->addRelation('ChildAdult', '\\App\\Models\\ChildAdult', RelationMap::ONE_TO_MANY, array (
+  0 =>
+  array (
+    0 => ':child_id',
+    1 => ':id',
+  ),
+), null, null, 'ChildAdults', false);
+        $this->addRelation('Adult', '\\App\\Models\\Adult', RelationMap::MANY_TO_MANY, array(), null, null, 'Adults');
     } // buildRelations()
 
     /**

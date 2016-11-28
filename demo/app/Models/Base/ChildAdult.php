@@ -4,7 +4,10 @@ namespace App\Models\Base;
 
 use \Exception;
 use \PDO;
+use App\Models\AdultQuery as ChildAdultQuery;
+use App\Models\Child as ChildChild;
 use App\Models\ChildAdultQuery as ChildChildAdultQuery;
+use App\Models\ChildQuery as ChildChildQuery;
 use App\Models\Map\ChildAdultTableMap;
 use Propel\Runtime\Propel;
 use Propel\Runtime\ActiveQuery\Criteria;
@@ -72,6 +75,16 @@ abstract class ChildAdult implements ActiveRecordInterface
      * @var        int
      */
     protected $parent_id;
+
+    /**
+     * @var        ChildChild
+     */
+    protected $aChild;
+
+    /**
+     * @var        \App\Models\Adult
+     */
+    protected $aAdult;
 
     /**
      * Flag to prevent endless save loop, if this object is referenced
@@ -343,6 +356,10 @@ abstract class ChildAdult implements ActiveRecordInterface
             $this->modifiedColumns[ChildAdultTableMap::COL_CHILD_ID] = true;
         }
 
+        if ($this->aChild !== null && $this->aChild->getId() !== $v) {
+            $this->aChild = null;
+        }
+
         return $this;
     } // setChildId()
 
@@ -361,6 +378,10 @@ abstract class ChildAdult implements ActiveRecordInterface
         if ($this->parent_id !== $v) {
             $this->parent_id = $v;
             $this->modifiedColumns[ChildAdultTableMap::COL_PARENT_ID] = true;
+        }
+
+        if ($this->aAdult !== null && $this->aAdult->getId() !== $v) {
+            $this->aAdult = null;
         }
 
         return $this;
@@ -437,6 +458,12 @@ abstract class ChildAdult implements ActiveRecordInterface
      */
     public function ensureConsistency()
     {
+        if ($this->aChild !== null && $this->child_id !== $this->aChild->getId()) {
+            $this->aChild = null;
+        }
+        if ($this->aAdult !== null && $this->parent_id !== $this->aAdult->getId()) {
+            $this->aAdult = null;
+        }
     } // ensureConsistency
 
     /**
@@ -476,6 +503,8 @@ abstract class ChildAdult implements ActiveRecordInterface
 
         if ($deep) {  // also de-associate any related objects?
 
+            $this->aChild = null;
+            $this->aAdult = null;
         } // if (deep)
     }
 
@@ -574,6 +603,25 @@ abstract class ChildAdult implements ActiveRecordInterface
         $affectedRows = 0; // initialize var to track total num of affected rows
         if (!$this->alreadyInSave) {
             $this->alreadyInSave = true;
+
+            // We call the save method on the following object(s) if they
+            // were passed to this object by their corresponding set
+            // method.  This object relates to these object(s) by a
+            // foreign key reference.
+
+            if ($this->aChild !== null) {
+                if ($this->aChild->isModified() || $this->aChild->isNew()) {
+                    $affectedRows += $this->aChild->save($con);
+                }
+                $this->setChild($this->aChild);
+            }
+
+            if ($this->aAdult !== null) {
+                if ($this->aAdult->isModified() || $this->aAdult->isNew()) {
+                    $affectedRows += $this->aAdult->save($con);
+                }
+                $this->setAdult($this->aAdult);
+            }
 
             if ($this->isNew() || $this->isModified()) {
                 // persist changes
@@ -709,10 +757,11 @@ abstract class ChildAdult implements ActiveRecordInterface
      *                    Defaults to TableMap::TYPE_PHPNAME.
      * @param     boolean $includeLazyLoadColumns (optional) Whether to include lazy loaded columns. Defaults to TRUE.
      * @param     array $alreadyDumpedObjects List of objects to skip to avoid recursion
+     * @param     boolean $includeForeignObjects (optional) Whether to include hydrated related objects. Default to FALSE.
      *
      * @return array an associative array containing the field names (as keys) and field values
      */
-    public function toArray($keyType = TableMap::TYPE_PHPNAME, $includeLazyLoadColumns = true, $alreadyDumpedObjects = array())
+    public function toArray($keyType = TableMap::TYPE_PHPNAME, $includeLazyLoadColumns = true, $alreadyDumpedObjects = array(), $includeForeignObjects = false)
     {
 
         if (isset($alreadyDumpedObjects['ChildAdult'][$this->hashCode()])) {
@@ -729,6 +778,38 @@ abstract class ChildAdult implements ActiveRecordInterface
             $result[$key] = $virtualColumn;
         }
 
+        if ($includeForeignObjects) {
+            if (null !== $this->aChild) {
+
+                switch ($keyType) {
+                    case TableMap::TYPE_CAMELNAME:
+                        $key = 'child';
+                        break;
+                    case TableMap::TYPE_FIELDNAME:
+                        $key = 'child';
+                        break;
+                    default:
+                        $key = 'Child';
+                }
+
+                $result[$key] = $this->aChild->toArray($keyType, $includeLazyLoadColumns,  $alreadyDumpedObjects, true);
+            }
+            if (null !== $this->aAdult) {
+
+                switch ($keyType) {
+                    case TableMap::TYPE_CAMELNAME:
+                        $key = 'adult';
+                        break;
+                    case TableMap::TYPE_FIELDNAME:
+                        $key = 'adult';
+                        break;
+                    default:
+                        $key = 'Adult';
+                }
+
+                $result[$key] = $this->aAdult->toArray($keyType, $includeLazyLoadColumns,  $alreadyDumpedObjects, true);
+            }
+        }
 
         return $result;
     }
@@ -881,8 +962,22 @@ abstract class ChildAdult implements ActiveRecordInterface
         $validPk = null !== $this->getChildId() &&
             null !== $this->getParentId();
 
-        $validPrimaryKeyFKs = 0;
+        $validPrimaryKeyFKs = 2;
         $primaryKeyFKs = [];
+
+        //relation child_adult_fk_35cf67 to table child
+        if ($this->aChild && $hash = spl_object_hash($this->aChild)) {
+            $primaryKeyFKs[] = $hash;
+        } else {
+            $validPrimaryKeyFKs = false;
+        }
+
+        //relation child_adult_fk_194cca to table adult
+        if ($this->aAdult && $hash = spl_object_hash($this->aAdult)) {
+            $primaryKeyFKs[] = $hash;
+        } else {
+            $validPrimaryKeyFKs = false;
+        }
 
         if ($validPk) {
             return crc32(json_encode($this->getPrimaryKey(), JSON_UNESCAPED_UNICODE));
@@ -971,12 +1066,120 @@ abstract class ChildAdult implements ActiveRecordInterface
     }
 
     /**
+     * Declares an association between this object and a ChildChild object.
+     *
+     * @param  ChildChild $v
+     * @return $this|\App\Models\ChildAdult The current object (for fluent API support)
+     * @throws PropelException
+     */
+    public function setChild(ChildChild $v = null)
+    {
+        if ($v === null) {
+            $this->setChildId(NULL);
+        } else {
+            $this->setChildId($v->getId());
+        }
+
+        $this->aChild = $v;
+
+        // Add binding for other direction of this n:n relationship.
+        // If this object has already been added to the ChildChild object, it will not be re-added.
+        if ($v !== null) {
+            $v->addChildAdult($this);
+        }
+
+
+        return $this;
+    }
+
+
+    /**
+     * Get the associated ChildChild object
+     *
+     * @param  ConnectionInterface $con Optional Connection object.
+     * @return ChildChild The associated ChildChild object.
+     * @throws PropelException
+     */
+    public function getChild(ConnectionInterface $con = null)
+    {
+        if ($this->aChild === null && ($this->child_id !== null)) {
+            $this->aChild = ChildChildQuery::create()->findPk($this->child_id, $con);
+            /* The following can be used additionally to
+                guarantee the related object contains a reference
+                to this object.  This level of coupling may, however, be
+                undesirable since it could result in an only partially populated collection
+                in the referenced object.
+                $this->aChild->addChildAdults($this);
+             */
+        }
+
+        return $this->aChild;
+    }
+
+    /**
+     * Declares an association between this object and a \App\Models\Adult object.
+     *
+     * @param  \App\Models\Adult $v
+     * @return $this|\App\Models\ChildAdult The current object (for fluent API support)
+     * @throws PropelException
+     */
+    public function setAdult(\App\Models\Adult $v = null)
+    {
+        if ($v === null) {
+            $this->setParentId(NULL);
+        } else {
+            $this->setParentId($v->getId());
+        }
+
+        $this->aAdult = $v;
+
+        // Add binding for other direction of this n:n relationship.
+        // If this object has already been added to the \App\Models\Adult object, it will not be re-added.
+        if ($v !== null) {
+            $v->addChildAdult($this);
+        }
+
+
+        return $this;
+    }
+
+
+    /**
+     * Get the associated \App\Models\Adult object
+     *
+     * @param  ConnectionInterface $con Optional Connection object.
+     * @return \App\Models\Adult The associated \App\Models\Adult object.
+     * @throws PropelException
+     */
+    public function getAdult(ConnectionInterface $con = null)
+    {
+        if ($this->aAdult === null && ($this->parent_id !== null)) {
+            $this->aAdult = ChildAdultQuery::create()->findPk($this->parent_id, $con);
+            /* The following can be used additionally to
+                guarantee the related object contains a reference
+                to this object.  This level of coupling may, however, be
+                undesirable since it could result in an only partially populated collection
+                in the referenced object.
+                $this->aAdult->addChildAdults($this);
+             */
+        }
+
+        return $this->aAdult;
+    }
+
+    /**
      * Clears the current object, sets all attributes to their default values and removes
      * outgoing references as well as back-references (from other objects to this one. Results probably in a database
      * change of those foreign objects when you call `save` there).
      */
     public function clear()
     {
+        if (null !== $this->aChild) {
+            $this->aChild->removeChildAdult($this);
+        }
+        if (null !== $this->aAdult) {
+            $this->aAdult->removeChildAdult($this);
+        }
         $this->child_id = null;
         $this->parent_id = null;
         $this->alreadyInSave = false;
@@ -999,6 +1202,8 @@ abstract class ChildAdult implements ActiveRecordInterface
         if ($deep) {
         } // if ($deep)
 
+        $this->aChild = null;
+        $this->aAdult = null;
     }
 
     /**

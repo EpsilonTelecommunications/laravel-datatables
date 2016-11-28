@@ -132,8 +132,8 @@ class ChildAdultTableMap extends TableMap
         $this->setUseIdGenerator(false);
         $this->setIsCrossRef(true);
         // columns
-        $this->addPrimaryKey('child_id', 'ChildId', 'INTEGER', true, null, null);
-        $this->addPrimaryKey('parent_id', 'ParentId', 'INTEGER', true, null, null);
+        $this->addForeignPrimaryKey('child_id', 'ChildId', 'INTEGER' , 'child', 'id', true, null, null);
+        $this->addForeignPrimaryKey('parent_id', 'ParentId', 'INTEGER' , 'adult', 'id', true, null, null);
     } // initialize()
 
     /**
@@ -141,6 +141,20 @@ class ChildAdultTableMap extends TableMap
      */
     public function buildRelations()
     {
+        $this->addRelation('Child', '\\App\\Models\\Child', RelationMap::MANY_TO_ONE, array (
+  0 =>
+  array (
+    0 => ':child_id',
+    1 => ':id',
+  ),
+), null, null, null, false);
+        $this->addRelation('Adult', '\\App\\Models\\Adult', RelationMap::MANY_TO_ONE, array (
+  0 =>
+  array (
+    0 => ':parent_id',
+    1 => ':id',
+  ),
+), null, null, null, false);
     } // buildRelations()
 
     /**

@@ -5,15 +5,22 @@ namespace App\Models\Base;
 use \DateTime;
 use \Exception;
 use \PDO;
+use App\Models\Adult as ChildAdult;
+use App\Models\AdultQuery as ChildAdultQuery;
+use App\Models\Child as ChildChild;
+use App\Models\ChildAdult as ChildChildAdult;
+use App\Models\ChildAdultQuery as ChildChildAdultQuery;
 use App\Models\ChildQuery as ChildChildQuery;
 use App\Models\Gender as ChildGender;
 use App\Models\GenderQuery as ChildGenderQuery;
+use App\Models\Map\ChildAdultTableMap;
 use App\Models\Map\ChildTableMap;
 use Propel\Runtime\Propel;
 use Propel\Runtime\ActiveQuery\Criteria;
 use Propel\Runtime\ActiveQuery\ModelCriteria;
 use Propel\Runtime\ActiveRecord\ActiveRecordInterface;
 use Propel\Runtime\Collection\Collection;
+use Propel\Runtime\Collection\ObjectCollection;
 use Propel\Runtime\Connection\ConnectionInterface;
 use Propel\Runtime\Exception\BadMethodCallException;
 use Propel\Runtime\Exception\LogicException;
@@ -97,12 +104,40 @@ abstract class Child implements ActiveRecordInterface
     protected $aGender;
 
     /**
+     * @var        ObjectCollection|ChildChildAdult[] Collection to store aggregation of ChildChildAdult objects.
+     */
+    protected $collChildAdults;
+    protected $collChildAdultsPartial;
+
+    /**
+     * @var        ObjectCollection|ChildAdult[] Cross Collection to store aggregation of ChildAdult objects.
+     */
+    protected $collAdults;
+
+    /**
+     * @var bool
+     */
+    protected $collAdultsPartial;
+
+    /**
      * Flag to prevent endless save loop, if this object is referenced
      * by another object which falls in this transaction.
      *
      * @var boolean
      */
     protected $alreadyInSave = false;
+
+    /**
+     * An array of objects scheduled for deletion.
+     * @var ObjectCollection|ChildAdult[]
+     */
+    protected $adultsScheduledForDeletion = null;
+
+    /**
+     * An array of objects scheduled for deletion.
+     * @var ObjectCollection|ChildChildAdult[]
+     */
+    protected $childAdultsScheduledForDeletion = null;
 
     /**
      * Initializes internal state of App\Models\Base\Child object.
@@ -586,6 +621,9 @@ abstract class Child implements ActiveRecordInterface
         if ($deep) {  // also de-associate any related objects?
 
             $this->aGender = null;
+            $this->collChildAdults = null;
+
+            $this->collAdults = null;
         } // if (deep)
     }
 
@@ -706,6 +744,52 @@ abstract class Child implements ActiveRecordInterface
                     $affectedRows += $this->doUpdate($con);
                 }
                 $this->resetModified();
+            }
+
+            if ($this->adultsScheduledForDeletion !== null) {
+                if (!$this->adultsScheduledForDeletion->isEmpty()) {
+                    $pks = array();
+                    foreach ($this->adultsScheduledForDeletion as $entry) {
+                        $entryPk = [];
+
+                        $entryPk[0] = $this->getId();
+                        $entryPk[1] = $entry->getId();
+                        $pks[] = $entryPk;
+                    }
+
+                    \App\Models\ChildAdultQuery::create()
+                        ->filterByPrimaryKeys($pks)
+                        ->delete($con);
+
+                    $this->adultsScheduledForDeletion = null;
+                }
+
+            }
+
+            if ($this->collAdults) {
+                foreach ($this->collAdults as $adult) {
+                    if (!$adult->isDeleted() && ($adult->isNew() || $adult->isModified())) {
+                        $adult->save($con);
+                    }
+                }
+            }
+
+
+            if ($this->childAdultsScheduledForDeletion !== null) {
+                if (!$this->childAdultsScheduledForDeletion->isEmpty()) {
+                    \App\Models\ChildAdultQuery::create()
+                        ->filterByPrimaryKeys($this->childAdultsScheduledForDeletion->getPrimaryKeys(false))
+                        ->delete($con);
+                    $this->childAdultsScheduledForDeletion = null;
+                }
+            }
+
+            if ($this->collChildAdults !== null) {
+                foreach ($this->collChildAdults as $referrerFK) {
+                    if (!$referrerFK->isDeleted() && ($referrerFK->isNew() || $referrerFK->isModified())) {
+                        $affectedRows += $referrerFK->save($con);
+                    }
+                }
             }
 
             $this->alreadyInSave = false;
@@ -902,6 +986,21 @@ abstract class Child implements ActiveRecordInterface
                 }
 
                 $result[$key] = $this->aGender->toArray($keyType, $includeLazyLoadColumns,  $alreadyDumpedObjects, true);
+            }
+            if (null !== $this->collChildAdults) {
+
+                switch ($keyType) {
+                    case TableMap::TYPE_CAMELNAME:
+                        $key = 'childAdults';
+                        break;
+                    case TableMap::TYPE_FIELDNAME:
+                        $key = 'child_adults';
+                        break;
+                    default:
+                        $key = 'ChildAdults';
+                }
+
+                $result[$key] = $this->collChildAdults->toArray(null, false, $keyType, $includeLazyLoadColumns, $alreadyDumpedObjects);
             }
         }
 
@@ -1129,6 +1228,20 @@ abstract class Child implements ActiveRecordInterface
         $copyObj->setGenderId($this->getGenderId());
         $copyObj->setName($this->getName());
         $copyObj->setDateOfBirth($this->getDateOfBirth());
+
+        if ($deepCopy) {
+            // important: temporarily setNew(false) because this affects the behavior of
+            // the getter/setter methods for fkey referrer objects.
+            $copyObj->setNew(false);
+
+            foreach ($this->getChildAdults() as $relObj) {
+                if ($relObj !== $this) {  // ensure that we don't try to copy a reference to ourselves
+                    $copyObj->addChildAdult($relObj->copy($deepCopy));
+                }
+            }
+
+        } // if ($deepCopy)
+
         if ($makeNew) {
             $copyObj->setNew(true);
             $copyObj->setId(NULL); // this is a auto-increment column, so set to default value
@@ -1208,6 +1321,518 @@ abstract class Child implements ActiveRecordInterface
         return $this->aGender;
     }
 
+
+    /**
+     * Initializes a collection based on the name of a relation.
+     * Avoids crafting an 'init[$relationName]s' method name
+     * that wouldn't work when StandardEnglishPluralizer is used.
+     *
+     * @param      string $relationName The name of the relation to initialize
+     * @return void
+     */
+    public function initRelation($relationName)
+    {
+        if ('ChildAdult' == $relationName) {
+            return $this->initChildAdults();
+        }
+    }
+
+    /**
+     * Clears out the collChildAdults collection
+     *
+     * This does not modify the database; however, it will remove any associated objects, causing
+     * them to be refetched by subsequent calls to accessor method.
+     *
+     * @return void
+     * @see        addChildAdults()
+     */
+    public function clearChildAdults()
+    {
+        $this->collChildAdults = null; // important to set this to NULL since that means it is uninitialized
+    }
+
+    /**
+     * Reset is the collChildAdults collection loaded partially.
+     */
+    public function resetPartialChildAdults($v = true)
+    {
+        $this->collChildAdultsPartial = $v;
+    }
+
+    /**
+     * Initializes the collChildAdults collection.
+     *
+     * By default this just sets the collChildAdults collection to an empty array (like clearcollChildAdults());
+     * however, you may wish to override this method in your stub class to provide setting appropriate
+     * to your application -- for example, setting the initial array to the values stored in database.
+     *
+     * @param      boolean $overrideExisting If set to true, the method call initializes
+     *                                        the collection even if it is not empty
+     *
+     * @return void
+     */
+    public function initChildAdults($overrideExisting = true)
+    {
+        if (null !== $this->collChildAdults && !$overrideExisting) {
+            return;
+        }
+
+        $collectionClassName = ChildAdultTableMap::getTableMap()->getCollectionClassName();
+
+        $this->collChildAdults = new $collectionClassName;
+        $this->collChildAdults->setModel('\App\Models\ChildAdult');
+    }
+
+    /**
+     * Gets an array of ChildChildAdult objects which contain a foreign key that references this object.
+     *
+     * If the $criteria is not null, it is used to always fetch the results from the database.
+     * Otherwise the results are fetched from the database the first time, then cached.
+     * Next time the same method is called without $criteria, the cached collection is returned.
+     * If this ChildChild is new, it will return
+     * an empty collection or the current collection; the criteria is ignored on a new object.
+     *
+     * @param      Criteria $criteria optional Criteria object to narrow the query
+     * @param      ConnectionInterface $con optional connection object
+     * @return ObjectCollection|ChildChildAdult[] List of ChildChildAdult objects
+     * @throws PropelException
+     */
+    public function getChildAdults(Criteria $criteria = null, ConnectionInterface $con = null)
+    {
+        $partial = $this->collChildAdultsPartial && !$this->isNew();
+        if (null === $this->collChildAdults || null !== $criteria  || $partial) {
+            if ($this->isNew() && null === $this->collChildAdults) {
+                // return empty collection
+                $this->initChildAdults();
+            } else {
+                $collChildAdults = ChildChildAdultQuery::create(null, $criteria)
+                    ->filterByChild($this)
+                    ->find($con);
+
+                if (null !== $criteria) {
+                    if (false !== $this->collChildAdultsPartial && count($collChildAdults)) {
+                        $this->initChildAdults(false);
+
+                        foreach ($collChildAdults as $obj) {
+                            if (false == $this->collChildAdults->contains($obj)) {
+                                $this->collChildAdults->append($obj);
+                            }
+                        }
+
+                        $this->collChildAdultsPartial = true;
+                    }
+
+                    return $collChildAdults;
+                }
+
+                if ($partial && $this->collChildAdults) {
+                    foreach ($this->collChildAdults as $obj) {
+                        if ($obj->isNew()) {
+                            $collChildAdults[] = $obj;
+                        }
+                    }
+                }
+
+                $this->collChildAdults = $collChildAdults;
+                $this->collChildAdultsPartial = false;
+            }
+        }
+
+        return $this->collChildAdults;
+    }
+
+    /**
+     * Sets a collection of ChildChildAdult objects related by a one-to-many relationship
+     * to the current object.
+     * It will also schedule objects for deletion based on a diff between old objects (aka persisted)
+     * and new objects from the given Propel collection.
+     *
+     * @param      Collection $childAdults A Propel collection.
+     * @param      ConnectionInterface $con Optional connection object
+     * @return $this|ChildChild The current object (for fluent API support)
+     */
+    public function setChildAdults(Collection $childAdults, ConnectionInterface $con = null)
+    {
+        /** @var ChildChildAdult[] $childAdultsToDelete */
+        $childAdultsToDelete = $this->getChildAdults(new Criteria(), $con)->diff($childAdults);
+
+
+        //since at least one column in the foreign key is at the same time a PK
+        //we can not just set a PK to NULL in the lines below. We have to store
+        //a backup of all values, so we are able to manipulate these items based on the onDelete value later.
+        $this->childAdultsScheduledForDeletion = clone $childAdultsToDelete;
+
+        foreach ($childAdultsToDelete as $childAdultRemoved) {
+            $childAdultRemoved->setChild(null);
+        }
+
+        $this->collChildAdults = null;
+        foreach ($childAdults as $childAdult) {
+            $this->addChildAdult($childAdult);
+        }
+
+        $this->collChildAdults = $childAdults;
+        $this->collChildAdultsPartial = false;
+
+        return $this;
+    }
+
+    /**
+     * Returns the number of related BaseChildAdult objects.
+     *
+     * @param      Criteria $criteria
+     * @param      boolean $distinct
+     * @param      ConnectionInterface $con
+     * @return int             Count of related BaseChildAdult objects.
+     * @throws PropelException
+     */
+    public function countChildAdults(Criteria $criteria = null, $distinct = false, ConnectionInterface $con = null)
+    {
+        $partial = $this->collChildAdultsPartial && !$this->isNew();
+        if (null === $this->collChildAdults || null !== $criteria || $partial) {
+            if ($this->isNew() && null === $this->collChildAdults) {
+                return 0;
+            }
+
+            if ($partial && !$criteria) {
+                return count($this->getChildAdults());
+            }
+
+            $query = ChildChildAdultQuery::create(null, $criteria);
+            if ($distinct) {
+                $query->distinct();
+            }
+
+            return $query
+                ->filterByChild($this)
+                ->count($con);
+        }
+
+        return count($this->collChildAdults);
+    }
+
+    /**
+     * Method called to associate a ChildChildAdult object to this object
+     * through the ChildChildAdult foreign key attribute.
+     *
+     * @param  ChildChildAdult $l ChildChildAdult
+     * @return $this|\App\Models\Child The current object (for fluent API support)
+     */
+    public function addChildAdult(ChildChildAdult $l)
+    {
+        if ($this->collChildAdults === null) {
+            $this->initChildAdults();
+            $this->collChildAdultsPartial = true;
+        }
+
+        if (!$this->collChildAdults->contains($l)) {
+            $this->doAddChildAdult($l);
+
+            if ($this->childAdultsScheduledForDeletion and $this->childAdultsScheduledForDeletion->contains($l)) {
+                $this->childAdultsScheduledForDeletion->remove($this->childAdultsScheduledForDeletion->search($l));
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param ChildChildAdult $childAdult The ChildChildAdult object to add.
+     */
+    protected function doAddChildAdult(ChildChildAdult $childAdult)
+    {
+        $this->collChildAdults[]= $childAdult;
+        $childAdult->setChild($this);
+    }
+
+    /**
+     * @param  ChildChildAdult $childAdult The ChildChildAdult object to remove.
+     * @return $this|ChildChild The current object (for fluent API support)
+     */
+    public function removeChildAdult(ChildChildAdult $childAdult)
+    {
+        if ($this->getChildAdults()->contains($childAdult)) {
+            $pos = $this->collChildAdults->search($childAdult);
+            $this->collChildAdults->remove($pos);
+            if (null === $this->childAdultsScheduledForDeletion) {
+                $this->childAdultsScheduledForDeletion = clone $this->collChildAdults;
+                $this->childAdultsScheduledForDeletion->clear();
+            }
+            $this->childAdultsScheduledForDeletion[]= clone $childAdult;
+            $childAdult->setChild(null);
+        }
+
+        return $this;
+    }
+
+
+    /**
+     * If this collection has already been initialized with
+     * an identical criteria, it returns the collection.
+     * Otherwise if this Child is new, it will return
+     * an empty collection; or if this Child has previously
+     * been saved, it will retrieve related ChildAdults from storage.
+     *
+     * This method is protected by default in order to keep the public
+     * api reasonable.  You can provide public methods for those you
+     * actually need in Child.
+     *
+     * @param      Criteria $criteria optional Criteria object to narrow the query
+     * @param      ConnectionInterface $con optional connection object
+     * @param      string $joinBehavior optional join type to use (defaults to Criteria::LEFT_JOIN)
+     * @return ObjectCollection|ChildChildAdult[] List of ChildChildAdult objects
+     */
+    public function getChildAdultsJoinAdult(Criteria $criteria = null, ConnectionInterface $con = null, $joinBehavior = Criteria::LEFT_JOIN)
+    {
+        $query = ChildChildAdultQuery::create(null, $criteria);
+        $query->joinWith('Adult', $joinBehavior);
+
+        return $this->getChildAdults($query, $con);
+    }
+
+    /**
+     * Clears out the collAdults collection
+     *
+     * This does not modify the database; however, it will remove any associated objects, causing
+     * them to be refetched by subsequent calls to accessor method.
+     *
+     * @return void
+     * @see        addAdults()
+     */
+    public function clearAdults()
+    {
+        $this->collAdults = null; // important to set this to NULL since that means it is uninitialized
+    }
+
+    /**
+     * Initializes the collAdults crossRef collection.
+     *
+     * By default this just sets the collAdults collection to an empty collection (like clearAdults());
+     * however, you may wish to override this method in your stub class to provide setting appropriate
+     * to your application -- for example, setting the initial array to the values stored in database.
+     *
+     * @return void
+     */
+    public function initAdults()
+    {
+        $collectionClassName = ChildAdultTableMap::getTableMap()->getCollectionClassName();
+
+        $this->collAdults = new $collectionClassName;
+        $this->collAdultsPartial = true;
+        $this->collAdults->setModel('\App\Models\Adult');
+    }
+
+    /**
+     * Checks if the collAdults collection is loaded.
+     *
+     * @return bool
+     */
+    public function isAdultsLoaded()
+    {
+        return null !== $this->collAdults;
+    }
+
+    /**
+     * Gets a collection of ChildAdult objects related by a many-to-many relationship
+     * to the current object by way of the child_adult cross-reference table.
+     *
+     * If the $criteria is not null, it is used to always fetch the results from the database.
+     * Otherwise the results are fetched from the database the first time, then cached.
+     * Next time the same method is called without $criteria, the cached collection is returned.
+     * If this ChildChild is new, it will return
+     * an empty collection or the current collection; the criteria is ignored on a new object.
+     *
+     * @param      Criteria $criteria Optional query object to filter the query
+     * @param      ConnectionInterface $con Optional connection object
+     *
+     * @return ObjectCollection|ChildAdult[] List of ChildAdult objects
+     */
+    public function getAdults(Criteria $criteria = null, ConnectionInterface $con = null)
+    {
+        $partial = $this->collAdultsPartial && !$this->isNew();
+        if (null === $this->collAdults || null !== $criteria || $partial) {
+            if ($this->isNew()) {
+                // return empty collection
+                if (null === $this->collAdults) {
+                    $this->initAdults();
+                }
+            } else {
+
+                $query = ChildAdultQuery::create(null, $criteria)
+                    ->filterByChild($this);
+                $collAdults = $query->find($con);
+                if (null !== $criteria) {
+                    return $collAdults;
+                }
+
+                if ($partial && $this->collAdults) {
+                    //make sure that already added objects gets added to the list of the database.
+                    foreach ($this->collAdults as $obj) {
+                        if (!$collAdults->contains($obj)) {
+                            $collAdults[] = $obj;
+                        }
+                    }
+                }
+
+                $this->collAdults = $collAdults;
+                $this->collAdultsPartial = false;
+            }
+        }
+
+        return $this->collAdults;
+    }
+
+    /**
+     * Sets a collection of Adult objects related by a many-to-many relationship
+     * to the current object by way of the child_adult cross-reference table.
+     * It will also schedule objects for deletion based on a diff between old objects (aka persisted)
+     * and new objects from the given Propel collection.
+     *
+     * @param  Collection $adults A Propel collection.
+     * @param  ConnectionInterface $con Optional connection object
+     * @return $this|ChildChild The current object (for fluent API support)
+     */
+    public function setAdults(Collection $adults, ConnectionInterface $con = null)
+    {
+        $this->clearAdults();
+        $currentAdults = $this->getAdults();
+
+        $adultsScheduledForDeletion = $currentAdults->diff($adults);
+
+        foreach ($adultsScheduledForDeletion as $toDelete) {
+            $this->removeAdult($toDelete);
+        }
+
+        foreach ($adults as $adult) {
+            if (!$currentAdults->contains($adult)) {
+                $this->doAddAdult($adult);
+            }
+        }
+
+        $this->collAdultsPartial = false;
+        $this->collAdults = $adults;
+
+        return $this;
+    }
+
+    /**
+     * Gets the number of Adult objects related by a many-to-many relationship
+     * to the current object by way of the child_adult cross-reference table.
+     *
+     * @param      Criteria $criteria Optional query object to filter the query
+     * @param      boolean $distinct Set to true to force count distinct
+     * @param      ConnectionInterface $con Optional connection object
+     *
+     * @return int the number of related Adult objects
+     */
+    public function countAdults(Criteria $criteria = null, $distinct = false, ConnectionInterface $con = null)
+    {
+        $partial = $this->collAdultsPartial && !$this->isNew();
+        if (null === $this->collAdults || null !== $criteria || $partial) {
+            if ($this->isNew() && null === $this->collAdults) {
+                return 0;
+            } else {
+
+                if ($partial && !$criteria) {
+                    return count($this->getAdults());
+                }
+
+                $query = ChildAdultQuery::create(null, $criteria);
+                if ($distinct) {
+                    $query->distinct();
+                }
+
+                return $query
+                    ->filterByChild($this)
+                    ->count($con);
+            }
+        } else {
+            return count($this->collAdults);
+        }
+    }
+
+    /**
+     * Associate a ChildAdult to this object
+     * through the child_adult cross reference table.
+     *
+     * @param ChildAdult $adult
+     * @return ChildChild The current object (for fluent API support)
+     */
+    public function addAdult(ChildAdult $adult)
+    {
+        if ($this->collAdults === null) {
+            $this->initAdults();
+        }
+
+        if (!$this->getAdults()->contains($adult)) {
+            // only add it if the **same** object is not already associated
+            $this->collAdults->push($adult);
+            $this->doAddAdult($adult);
+        }
+
+        return $this;
+    }
+
+    /**
+     *
+     * @param ChildAdult $adult
+     */
+    protected function doAddAdult(ChildAdult $adult)
+    {
+        $childAdult = new ChildChildAdult();
+
+        $childAdult->setAdult($adult);
+
+        $childAdult->setChild($this);
+
+        $this->addChildAdult($childAdult);
+
+        // set the back reference to this object directly as using provided method either results
+        // in endless loop or in multiple relations
+        if (!$adult->isChildrenLoaded()) {
+            $adult->initChildren();
+            $adult->getChildren()->push($this);
+        } elseif (!$adult->getChildren()->contains($this)) {
+            $adult->getChildren()->push($this);
+        }
+
+    }
+
+    /**
+     * Remove adult of this object
+     * through the child_adult cross reference table.
+     *
+     * @param ChildAdult $adult
+     * @return ChildChild The current object (for fluent API support)
+     */
+    public function removeAdult(ChildAdult $adult)
+    {
+        if ($this->getAdults()->contains($adult)) { $childAdult = new ChildChildAdult();
+
+            $childAdult->setAdult($adult);
+            if ($adult->isChildrenLoaded()) {
+                //remove the back reference if available
+                $adult->getChildren()->removeObject($this);
+            }
+
+            $childAdult->setChild($this);
+            $this->removeChildAdult(clone $childAdult);
+            $childAdult->clear();
+
+            $this->collAdults->remove($this->collAdults->search($adult));
+
+            if (null === $this->adultsScheduledForDeletion) {
+                $this->adultsScheduledForDeletion = clone $this->collAdults;
+                $this->adultsScheduledForDeletion->clear();
+            }
+
+            $this->adultsScheduledForDeletion->push($adult);
+        }
+
+
+        return $this;
+    }
+
     /**
      * Clears the current object, sets all attributes to their default values and removes
      * outgoing references as well as back-references (from other objects to this one. Results probably in a database
@@ -1240,8 +1865,20 @@ abstract class Child implements ActiveRecordInterface
     public function clearAllReferences($deep = false)
     {
         if ($deep) {
+            if ($this->collChildAdults) {
+                foreach ($this->collChildAdults as $o) {
+                    $o->clearAllReferences($deep);
+                }
+            }
+            if ($this->collAdults) {
+                foreach ($this->collAdults as $o) {
+                    $o->clearAllReferences($deep);
+                }
+            }
         } // if ($deep)
 
+        $this->collChildAdults = null;
+        $this->collAdults = null;
         $this->aGender = null;
     }
 

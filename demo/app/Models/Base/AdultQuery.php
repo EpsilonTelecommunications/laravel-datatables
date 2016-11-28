@@ -48,7 +48,17 @@ use Propel\Runtime\Exception\PropelException;
  * @method     ChildAdultQuery rightJoinWithGender() Adds a RIGHT JOIN clause and with to the query using the Gender relation
  * @method     ChildAdultQuery innerJoinWithGender() Adds a INNER JOIN clause and with to the query using the Gender relation
  *
- * @method     \App\Models\GenderQuery endUse() Finalizes a secondary criteria and merges it with its primary Criteria
+ * @method     ChildAdultQuery leftJoinChildAdult($relationAlias = null) Adds a LEFT JOIN clause to the query using the ChildAdult relation
+ * @method     ChildAdultQuery rightJoinChildAdult($relationAlias = null) Adds a RIGHT JOIN clause to the query using the ChildAdult relation
+ * @method     ChildAdultQuery innerJoinChildAdult($relationAlias = null) Adds a INNER JOIN clause to the query using the ChildAdult relation
+ *
+ * @method     ChildAdultQuery joinWithChildAdult($joinType = Criteria::INNER_JOIN) Adds a join clause and with to the query using the ChildAdult relation
+ *
+ * @method     ChildAdultQuery leftJoinWithChildAdult() Adds a LEFT JOIN clause and with to the query using the ChildAdult relation
+ * @method     ChildAdultQuery rightJoinWithChildAdult() Adds a RIGHT JOIN clause and with to the query using the ChildAdult relation
+ * @method     ChildAdultQuery innerJoinWithChildAdult() Adds a INNER JOIN clause and with to the query using the ChildAdult relation
+ *
+ * @method     \App\Models\GenderQuery|\App\Models\ChildAdultQuery endUse() Finalizes a secondary criteria and merges it with its primary Criteria
  *
  * @method     ChildAdult findOne(ConnectionInterface $con = null) Return the first ChildAdult matching the query
  * @method     ChildAdult findOneOrCreate(ConnectionInterface $con = null) Return the first ChildAdult matching the query, or a new ChildAdult object populated from the query conditions when no match is found
@@ -486,6 +496,96 @@ abstract class AdultQuery extends ModelCriteria
         return $this
             ->joinGender($relationAlias, $joinType)
             ->useQuery($relationAlias ? $relationAlias : 'Gender', '\App\Models\GenderQuery');
+    }
+
+    /**
+     * Filter the query by a related \App\Models\ChildAdult object
+     *
+     * @param \App\Models\ChildAdult|ObjectCollection $childAdult the related object to use as filter
+     * @param string $comparison Operator to use for the column comparison, defaults to Criteria::EQUAL
+     *
+     * @return ChildAdultQuery The current query, for fluid interface
+     */
+    public function filterByChildAdult($childAdult, $comparison = null)
+    {
+        if ($childAdult instanceof \App\Models\ChildAdult) {
+            return $this
+                ->addUsingAlias(AdultTableMap::COL_ID, $childAdult->getParentId(), $comparison);
+        } elseif ($childAdult instanceof ObjectCollection) {
+            return $this
+                ->useChildAdultQuery()
+                ->filterByPrimaryKeys($childAdult->getPrimaryKeys())
+                ->endUse();
+        } else {
+            throw new PropelException('filterByChildAdult() only accepts arguments of type \App\Models\ChildAdult or Collection');
+        }
+    }
+
+    /**
+     * Adds a JOIN clause to the query using the ChildAdult relation
+     *
+     * @param     string $relationAlias optional alias for the relation
+     * @param     string $joinType Accepted values are null, 'left join', 'right join', 'inner join'
+     *
+     * @return $this|ChildAdultQuery The current query, for fluid interface
+     */
+    public function joinChildAdult($relationAlias = null, $joinType = Criteria::INNER_JOIN)
+    {
+        $tableMap = $this->getTableMap();
+        $relationMap = $tableMap->getRelation('ChildAdult');
+
+        // create a ModelJoin object for this join
+        $join = new ModelJoin();
+        $join->setJoinType($joinType);
+        $join->setRelationMap($relationMap, $this->useAliasInSQL ? $this->getModelAlias() : null, $relationAlias);
+        if ($previousJoin = $this->getPreviousJoin()) {
+            $join->setPreviousJoin($previousJoin);
+        }
+
+        // add the ModelJoin to the current object
+        if ($relationAlias) {
+            $this->addAlias($relationAlias, $relationMap->getRightTable()->getName());
+            $this->addJoinObject($join, $relationAlias);
+        } else {
+            $this->addJoinObject($join, 'ChildAdult');
+        }
+
+        return $this;
+    }
+
+    /**
+     * Use the ChildAdult relation ChildAdult object
+     *
+     * @see useQuery()
+     *
+     * @param     string $relationAlias optional alias for the relation,
+     *                                   to be used as main alias in the secondary query
+     * @param     string $joinType Accepted values are null, 'left join', 'right join', 'inner join'
+     *
+     * @return \App\Models\ChildAdultQuery A secondary query class using the current class as primary query
+     */
+    public function useChildAdultQuery($relationAlias = null, $joinType = Criteria::INNER_JOIN)
+    {
+        return $this
+            ->joinChildAdult($relationAlias, $joinType)
+            ->useQuery($relationAlias ? $relationAlias : 'ChildAdult', '\App\Models\ChildAdultQuery');
+    }
+
+    /**
+     * Filter the query by a related Child object
+     * using the child_adult table as cross reference
+     *
+     * @param Child $child the related object to use as filter
+     * @param string $comparison Operator to use for the column comparison, defaults to Criteria::EQUAL
+     *
+     * @return ChildAdultQuery The current query, for fluid interface
+     */
+    public function filterByChild($child, $comparison = Criteria::EQUAL)
+    {
+        return $this
+            ->useChildAdultQuery()
+            ->filterByChild($child, $comparison)
+            ->endUse();
     }
 
     /**

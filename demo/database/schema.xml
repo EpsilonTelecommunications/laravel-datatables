@@ -38,6 +38,12 @@
     <table name="child_adult" isCrossRef="true">
         <column name="child_id" type="integer" primaryKey="true"/>
         <column name="parent_id" type="integer" primaryKey="true"/>
+        <foreign-key foreignTable="child">
+            <reference local="child_id" foreign="id"/>
+        </foreign-key>
+        <foreign-key foreignTable="adult">
+            <reference local="parent_id" foreign="id"/>
+        </foreign-key>
     </table>
 
 </database>

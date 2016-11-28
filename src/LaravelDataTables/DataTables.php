@@ -1,6 +1,7 @@
 <?php namespace SevenD\LaravelDataTables;
 
 use SevenD\LaravelDataTables\Columns\ColumnRender;
+use SevenD\LaravelDataTables\Columns\GroupedJoinColumn;
 use SevenD\LaravelDataTables\Config\DataTableConfig;
 use SevenD\LaraveLDataTables\Exceptions\NoDriverFoundException;
 use Illuminate\Http\Request;
@@ -56,10 +57,20 @@ class DataTables
         foreach ($response['data'] as $key => $data) {
             foreach ($this->config->getColumns() as $subkey => $column) {
                 if ($column->getRender() instanceof ColumnRender) {
-                    $data[$subkey] = View::make($column->getRender()->getRender())->with($data)->render();
+                    if ($column instanceof GroupedJoinColumn) {
+                        // Goodness only knows if this will work
+
+                    } else {
+                        $response['data'][$key][$subkey] = View::make($column->getRender()->getRender())->with($data)->render();
+                    }
+                } else {
+                    if ($column instanceof GroupedJoinColumn) {
+
+                    } else {
+                        $response['data'][$key] = $data;
+                    }
                 }
             }
-            $response['data'][$key] = $data;
         }
 
         return $response;

@@ -2,6 +2,8 @@
 
 use Propel\Generator\Model\PropelTypes;
 use Propel\Runtime\ActiveQuery\Criteria;
+use Propel\Runtime\Collection\ObjectCollection;
+use Propel\Runtime\Map\RelationMap;
 use SevenD\LaravelDataTables\Columns\BaseColumn;
 use SevenD\LaravelDataTables\Config\DataTableConfig;
 use SevenD\LaravelDataTables\Columns\Column;
@@ -37,8 +39,7 @@ class PropelDataTablesDriver
             $rowOutput = [];
 
             if (!$className) {
-                $className = explode('\\', get_class($row));
-                $className = end($className);
+                $className = $this->getClassName($row);
             }
 
             try {
@@ -48,18 +49,30 @@ class PropelDataTablesDriver
                         $joinModel = $row;
                         foreach ($column->getJoins() as $join) {
                             $getFunction = 'get' . $join['Name'];
-                            if (is_callable([$joinModel, $getFunction])) {
+                            if (method_exists($joinModel, $getFunction)) {
+                                $rowOutput[$this->getClassName($joinModel) . 'Object'] = $joinModel;
                                 $joinModel = $joinModel->$getFunction();
                                 if (is_null($joinModel) && $join['JoinType'] == JoinColumn::INNER_JOIN) {
-                                    throw new Exception; // Dont want this row as we cannot 'join'
+                                    throw new Exception; // Don't want this row as we cannot 'join'
+                                } else {
+                                    $rowOutput[$column->getName()] = '';
                                 }
                             } else {
                                 $rowOutput[$column->getName()] = '';
                             }
                         }
                         if ($joinModel) {
+
+                            if ($joinModel instanceof ObjectCollection) {
+                                $joinModels = [];
+                                foreach ($joinModel as $jm) {
+                                    $joinModels[] = $jm;
+                                }
+                            }
+
                             $getFunction = sprintf('get%s', $column->getColumnName());
                             if (is_callable([$joinModel, $getFunction])) {
+                                $rowOutput[$this->getClassName($joinModel) . 'Object'] = $joinModel;
                                 $rowOutput[$column->getName()] = $joinModel->$getFunction();
                             }
                         } else {
@@ -75,6 +88,7 @@ class PropelDataTablesDriver
                 $output[] = $rowOutput;
             } catch (Exception $e) {
                 // Mute
+                throw $e;
             }
         }
 
@@ -83,6 +97,12 @@ class PropelDataTablesDriver
             'recordsFiltered' => $results['recordsFiltered'],
             'recordsTotal' => $results['recordsTotal'],
         ];
+    }
+
+    private function getClassName($class)
+    {
+        $className = explode('\\', get_class($class));
+        return end($className);
     }
 
     private function runQuery()
@@ -108,15 +128,50 @@ class PropelDataTablesDriver
 
     private function doJoins()
     {
-        foreach ($this->config->getColumns() as $column) {
-            if ($column instanceof JoinColumn) {
-                $query = $this->query;
-                foreach ($column->getJoinSettings() as $settings) {
-                    $query->join($settings['Name'], $settings['JoinType']);
-                    $useQueryFunction = sprintf('use%sQuery', $settings['Name']);
-                    $query = $query->$useQueryFunction();
+        try {
+            foreach ($this->config->getColumns() as $column) {
+                if ($column instanceof JoinColumn) {
+                    $query = $this->query;
+                    $count = 0;
+                    foreach ($column->getJoinSettings() as $settings) {
+                        if ($query->getTableMap()->hasRelation($settings['Name'])) {
+                            $relation = $query->getTableMap()->getRelation($settings['Name']);
+                            $queryName = false;
+                            if ($relation->getType() == RelationMap::MANY_TO_MANY) {
+                                $localTableMap = $relation->getLocalTable(); // This is actually the foreign
+                                foreach ($query->getTableMap()->getRelations() as $relation) {
+                                    if ($relation->getType() == RelationMap::ONE_TO_MANY) {
+                                        $foreignTable = $relation->getLocalTable()->getRelation($settings['Name'])->getForeignTable();
+                                        if ($foreignTable == $localTableMap) {
+                                            $query->join($relation->getName(), JoinColumn::getPropelJoinFromJoinType($settings['JoinType']));
+                                            $useQueryFunction = sprintf('use%sQuery', $relation->getName());
+                                            $query = $query->$useQueryFunction();
+                                            $queryName = $settings['Name'];
+                                            $count++;
+                                        }
+                                    }
+                                }
+                            } elseif ($relation->getType() == RelationMap::MANY_TO_ONE) {
+                                $queryName = $relation->getName();
+                            }
+
+                            if ($queryName != false) {
+                                $query->join($queryName, JoinColumn::getPropelJoinFromJoinType($settings['JoinType']));
+                                $useQueryFunction = sprintf('use%sQuery', $queryName);
+                                $query = $query->$useQueryFunction();
+                                $count++;
+                            }
+                        }
+                    }
+                    for ($count; $count > 0; $count--) {
+                        $query = $query->endUse();
+                    }
+                    $this->query = $query;
                 }
             }
+            $this->query->groupBy('Id');
+        } catch (Exception $e) {
+            throw $e;
         }
     }
 
@@ -161,7 +216,7 @@ class PropelDataTablesDriver
                     } else {
                         $column = $this->query->getTableMap()->getPhpName() . '.' . $columnConfig->getColumnName();
                         if (!$this->isNeverSearchable($this->query, $columnConfig)) {
-                        $this->query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
+                            $this->query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
                         }
                     }
                 }

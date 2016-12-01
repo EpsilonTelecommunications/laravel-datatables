@@ -16,5 +16,8 @@ use App\Models\Base\Gender as BaseGender;
  */
 class Gender extends BaseGender
 {
-
+    public function getSomething()
+    {
+        return ChildQuery::create()->findOne();
+    }
 }

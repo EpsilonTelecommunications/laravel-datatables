@@ -28,17 +28,16 @@ class TestDataTable extends DataTableConfig
         $this->addColumn(JoinColumn::create([
             [
                 'Name' => 'Gender',
-                'JoinType' => JoinColumn::LEFT_JOIN,
+                'JoinType' => JoinColumn::INNER_JOIN,
             ], 'Name']));
 
-        $this->addColumn(GroupedJoinColumn::create(['Child', 'Name']));
 
-//        $this->addColumn(JoinColumn::create(['Gender', 'Name']));
 
-//        $this->addColumn(JoinColumn::create(['Gender', 'Race', 'Name']));
-//
-//        $this->addColumn(JoinColumn::create(['Gender', 'Race', 'Test']));
+//        $this->addColumn(GroupedJoinColumn::create(['Child', 'Name']));
 
+        $this->addColumn(JoinColumn::create(['Gender', 'Race', 'Name']));
+
+        $this->addColumn(JoinColumn::create(['Gender', 'Something', 'Name']));
 
         $this->addColumn(Column::create('DateOfBirth'));
     }

@@ -88,7 +88,7 @@ class PropelDataTablesDriver
                 $output[] = $rowOutput;
             } catch (Exception $e) {
                 // Mute
-                throw $e;
+                // throw $e;
             }
         }
 
@@ -131,45 +131,19 @@ class PropelDataTablesDriver
         try {
             foreach ($this->config->getColumns() as $column) {
                 if ($column instanceof JoinColumn) {
-                    $query = $this->query;
-                    $count = 0;
-                    foreach ($column->getJoinSettings() as $settings) {
-                        if ($query->getTableMap()->hasRelation($settings['Name'])) {
-                            $relation = $query->getTableMap()->getRelation($settings['Name']);
-                            $queryName = false;
-                            if ($relation->getType() == RelationMap::MANY_TO_MANY) {
-                                $localTableMap = $relation->getLocalTable(); // This is actually the foreign
-                                foreach ($query->getTableMap()->getRelations() as $relation) {
-                                    if ($relation->getType() == RelationMap::ONE_TO_MANY) {
-                                        $foreignTable = $relation->getLocalTable()->getRelation($settings['Name'])->getForeignTable();
-                                        if ($foreignTable == $localTableMap) {
-                                            $query->join($relation->getName(), JoinColumn::getPropelJoinFromJoinType($settings['JoinType']));
-                                            $useQueryFunction = sprintf('use%sQuery', $relation->getName());
-                                            $query = $query->$useQueryFunction();
-                                            $queryName = $settings['Name'];
-                                            $count++;
-                                        }
-                                    }
-                                }
-                            } elseif ($relation->getType() == RelationMap::MANY_TO_ONE) {
-                                $queryName = $relation->getName();
+                    $this->traverseQuery(
+                        $column,
+                        [
+                            'preEachQueryUp' => function (&$query, $queryName, $joinSettings) {
+                                $query->join($queryName, JoinColumn::getPropelJoinFromJoinType($joinSettings['JoinType']));
+                            },
+                            'afterAll' => function (&$query) {
+                                $query->groupBy('Id');
                             }
-
-                            if ($queryName != false) {
-                                $query->join($queryName, JoinColumn::getPropelJoinFromJoinType($settings['JoinType']));
-                                $useQueryFunction = sprintf('use%sQuery', $queryName);
-                                $query = $query->$useQueryFunction();
-                                $count++;
-                            }
-                        }
-                    }
-                    for ($count; $count > 0; $count--) {
-                        $query = $query->endUse();
-                    }
-                    $this->query = $query;
+                        ]
+                    );
                 }
             }
-            $this->query->groupBy('Id');
         } catch (Exception $e) {
             throw $e;
         }
@@ -200,19 +174,22 @@ class PropelDataTablesDriver
                 if ($columnConfig->getSearchable()) {
                     $query = $this->query;
                     if ($columnConfig instanceof JoinColumn) {
-                        foreach ($columnConfig->getJoinSettings() as $settings) {
-                            $query->join($settings['Name'], $settings['JoinType']);
-                            $useQueryFunction = sprintf('use%sQuery', $settings['Name']);
-                            $query = $query->_or()->$useQueryFunction();
-                        }
 
-                        if (!$this->isNeverSearchable($query, $columnConfig)) {
-                            $query->filterBy($columnConfig->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
-                        }
 
-                        foreach (array_reverse($columnConfig->getJoinSettings()) as $settings) {
-                            $query = $query->endUse()->_or();
-                        }
+                        $this->traverseQuery(
+                            $columnConfig,
+                            [
+                                'preEachQueryUp' => function (&$query) {
+                                    $query->_or();
+                                },
+                                'postEachQueryUp' => function (&$query) {
+                                    $query->_or();
+                                },
+                                'topJoin' => function (&$query, &$join) use ($searches) {
+                                    $query->filterBy($join->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
+                                }
+                            ]
+                        );
                     } else {
                         $column = $this->query->getTableMap()->getPhpName() . '.' . $columnConfig->getColumnName();
                         if (!$this->isNeverSearchable($this->query, $columnConfig)) {
@@ -256,5 +233,94 @@ class PropelDataTablesDriver
         if ($offset) {
             $this->query->offset($offset);
         }
+    }
+
+    public function traverseQuery(JoinColumn $join, $callbacks = [])
+    {
+        $query = $this->query;
+
+        $joinSettings = $join->getJoinSettings();
+
+        $joinCount = 0;
+
+        foreach ($joinSettings as $joinSetting) {
+
+            if ($query->getTableMap()->hasRelation($joinSetting['Name'])) {
+                $relation = $query->getTableMap()->getRelation($joinSetting['Name']);
+                $queryName = false;
+                if ($relation->getType() == RelationMap::MANY_TO_MANY) {
+                    $localTableMap = $relation->getLocalTable(); // This is actually the foreign
+                    foreach ($query->getTableMap()->getRelations() as $relation) {
+                        if ($relation->getType() == RelationMap::ONE_TO_MANY) {
+                            $foreignTable = $relation->getLocalTable()->getRelation($joinSetting['Name'])->getForeignTable();
+                            if ($foreignTable == $localTableMap) {
+                                $useFunction = sprintf('use%sQuery', $relation->getName());
+                                if ($this->itemIsCallable($callbacks, 'preEachQueryUp')) {
+                                    $callbacks['preEachQueryUp']($query, $relation->getName(), $joinSetting, $join);
+                                }
+                                try {
+                                    $query = $query->$useFunction();
+                                } catch(Exception $e) {
+                                    return false;
+                                }
+                                if ($this->itemIsCallable($callbacks, 'postEachQueryUp')) {
+                                    $callbacks['postEachQueryUp']($query, $relation->getName(), $joinSetting, $join);
+                                }
+                                $queryName = $joinSetting['Name'];
+                            }
+                        }
+                    }
+                } elseif ($relation->getType() == RelationMap::MANY_TO_ONE) {
+                    $queryName = $relation->getName();
+                }
+            } else {
+                $queryName = '';
+            }
+
+            $useFunction = sprintf('use%sQuery', $queryName);
+            try {
+                if ($this->itemIsCallable($callbacks, 'preEachQueryUp')) {
+                    $callbacks['preEachQueryUp']($query, $queryName, $joinSetting, $join);
+                }
+                $query = $query->$useFunction();
+                if ($this->itemIsCallable($callbacks, 'postEachQueryUp')) {
+                    $callbacks['postEachQueryUp']($query, $queryName, $joinSetting, $join);
+                }
+            } catch (Exception $e) {
+                return false;
+            }
+        }
+
+        if ($this->itemIsCallable($callbacks, 'topJoin')) {
+            $callbacks['topJoin']($query, $join);
+        }
+
+        foreach (array_reverse($join->getJoinSettings()) as $joinSetting) {
+            if ($this->itemIsCallable($callbacks, 'preEachQueryDown')) {
+                $callbacks['preEachQueryDown']($query, $joinSetting, $join);
+            }
+            try {
+                if ($relation->getType() == RelationMap::MANY_TO_MANY) {
+                    $query = $query->endUse();
+                }
+                $query = $query->endUse();
+            } catch (Exception $e) {
+                return false;
+            }
+            if ($this->itemIsCallable($callbacks, 'postEachQueryDown')) {
+                $callbacks['postEachQueryDown']($query, $joinSetting, $join);
+            }
+        }
+
+        if ($this->itemIsCallable($callbacks, 'afterAll')) {
+            $callbacks['afterAll']($query);
+        }
+
+        return true;
+    }
+
+    private function itemIsCallable($array, $index)
+    {
+        return (isset($array[$index]) && is_callable($array[$index]));
     }
 }

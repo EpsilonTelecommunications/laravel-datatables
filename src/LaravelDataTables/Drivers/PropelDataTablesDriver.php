@@ -107,8 +107,6 @@ class PropelDataTablesDriver
 
     private function runQuery()
     {
-        $this->doJoins();
-
         $this->doOrderBy();
 
         $recordsTotal = $this->query->count();
@@ -126,28 +124,28 @@ class PropelDataTablesDriver
         ];
     }
 
-    private function doJoins()
-    {
-        try {
-            foreach ($this->config->getColumns() as $column) {
-                if ($column instanceof JoinColumn) {
-                    $this->traverseQuery(
-                        $column,
-                        [
-                            'preEachQueryUp' => function (&$query, $queryName, $joinSettings) {
-                                $query->join($queryName, JoinColumn::getPropelJoinFromJoinType($joinSettings['JoinType']));
-                            },
-                            'afterAll' => function (&$query) {
-                                $query->groupBy('Id');
-                            }
-                        ]
-                    );
-                }
-            }
-        } catch (Exception $e) {
-            throw $e;
-        }
-    }
+//    private function doJoins()
+//    {
+//        try {
+//            foreach ($this->config->getColumns() as $column) {
+//                if ($column instanceof JoinColumn) {
+//                    $this->traverseQuery(
+//                        $column,
+//                        [
+//                            'preEachQueryUp' => function (&$query, $queryName, $joinSettings) {
+//                                $query->join($queryName, JoinColumn::getPropelJoinFromJoinType($joinSettings['JoinType']));
+//                            },
+//                            'afterAll' => function (&$query) {
+//                                $query->groupBy('Id');
+//                            }
+//                        ]
+//                    );
+//                }
+//            }
+//        } catch (Exception $e) {
+//            throw $e;
+//        }
+//    }
 
     private function doOrderBy()
     {
@@ -241,8 +239,6 @@ class PropelDataTablesDriver
 
         $joinSettings = $join->getJoinSettings();
 
-        $joinCount = 0;
-
         foreach ($joinSettings as $joinSetting) {
 
             if ($query->getTableMap()->hasRelation($joinSetting['Name'])) {
@@ -259,7 +255,7 @@ class PropelDataTablesDriver
                                     $callbacks['preEachQueryUp']($query, $relation->getName(), $joinSetting, $join);
                                 }
                                 try {
-                                    $query = $query->$useFunction();
+                                    $query = $query->$useFunction(null, JoinColumn::getPropelJoinFromJoinType($joinSettings['JoinType']));
                                 } catch(Exception $e) {
                                     return false;
                                 }
@@ -282,7 +278,7 @@ class PropelDataTablesDriver
                 if ($this->itemIsCallable($callbacks, 'preEachQueryUp')) {
                     $callbacks['preEachQueryUp']($query, $queryName, $joinSetting, $join);
                 }
-                $query = $query->$useFunction();
+                $query = $query->$useFunction(null, JoinColumn::getPropelJoinFromJoinType($joinSettings['JoinType']));
                 if ($this->itemIsCallable($callbacks, 'postEachQueryUp')) {
                     $callbacks['postEachQueryUp']($query, $queryName, $joinSetting, $join);
                 }

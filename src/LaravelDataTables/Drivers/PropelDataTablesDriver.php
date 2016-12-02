@@ -123,16 +123,28 @@ class PropelDataTablesDriver
     private function doOrderBy()
     {
         $orders = $this->request->get('order', []);
-
-        foreach ($orders as $order) {
-            $columnConfig = $this->config->getColumnByIndex($order['column']);
-            if ($columnConfig instanceof JoinColumn) {
-                $column = implode('.', [$columnConfig->getJoinName(), $columnConfig->getColumnName()]);
-            } else {
-                $column = $this->query->getTableMap()->getPhpName() . '.' . $columnConfig->getColumnName();
+        $query = $this->query;
+        try {
+            foreach ($orders as $order) {
+                $columnConfig = $this->config->getColumnByIndex($order['column']);
+                if ($columnConfig instanceof JoinColumn) {
+                    $column = implode('.', [$columnConfig->getJoinName(), $columnConfig->getColumnName()]);
+                    foreach (explode('.', $columnConfig->getJoinName()) as $part) {
+                        $useQuery = sprintf('use%sQuery', $part);
+                        $query = $query->$useQuery();
+                    }
+                    $query->orderBy($columnConfig->getColumnName(), $order['dir']);
+                    foreach (explode('.', $columnConfig->getJoinName()) as $part) {
+                        $query = $query->endUse();
+                    }
+                    $this->query = $query;
+                } else {
+                    $column = $this->query->getTableMap()->getPhpName() . '.' . $columnConfig->getColumnName();
+                    $this->query->orderBy($column, $order['dir']);
+                }
             }
-
-            $this->query->orderBy($column, $order['dir']);
+        } catch (\Exception $e) {
+            // muted
         }
     }
 

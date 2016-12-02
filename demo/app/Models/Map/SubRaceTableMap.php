@@ -2,8 +2,8 @@
 
 namespace App\Models\Map;
 
-use App\Models\Race;
-use App\Models\RaceQuery;
+use App\Models\SubRace;
+use App\Models\SubRaceQuery;
 use Propel\Runtime\Propel;
 use Propel\Runtime\ActiveQuery\Criteria;
 use Propel\Runtime\ActiveQuery\InstancePoolTrait;
@@ -16,7 +16,7 @@ use Propel\Runtime\Map\TableMapTrait;
 
 
 /**
- * This class defines the structure of the 'race' table.
+ * This class defines the structure of the 'sub_race' table.
  *
  *
  *
@@ -26,7 +26,7 @@ use Propel\Runtime\Map\TableMapTrait;
  * (i.e. if it's a text column type).
  *
  */
-class RaceTableMap extends TableMap
+class SubRaceTableMap extends TableMap
 {
     use InstancePoolTrait;
     use TableMapTrait;
@@ -34,7 +34,7 @@ class RaceTableMap extends TableMap
     /**
      * The (dot-path) name of this class
      */
-    const CLASS_NAME = '.Map.RaceTableMap';
+    const CLASS_NAME = '.Map.SubRaceTableMap';
 
     /**
      * The default database name for this class
@@ -44,22 +44,22 @@ class RaceTableMap extends TableMap
     /**
      * The table name for this class
      */
-    const TABLE_NAME = 'race';
+    const TABLE_NAME = 'sub_race';
 
     /**
      * The related Propel class for this table
      */
-    const OM_CLASS = '\\App\\Models\\Race';
+    const OM_CLASS = '\\App\\Models\\SubRace';
 
     /**
      * A class that can be returned by this tableMap
      */
-    const CLASS_DEFAULT = 'Race';
+    const CLASS_DEFAULT = 'SubRace';
 
     /**
      * The total number of columns
      */
-    const NUM_COLUMNS = 2;
+    const NUM_COLUMNS = 3;
 
     /**
      * The number of lazy-loaded columns
@@ -69,17 +69,22 @@ class RaceTableMap extends TableMap
     /**
      * The number of columns to hydrate (NUM_COLUMNS - NUM_LAZY_LOAD_COLUMNS)
      */
-    const NUM_HYDRATE_COLUMNS = 2;
+    const NUM_HYDRATE_COLUMNS = 3;
 
     /**
      * the column name for the id field
      */
-    const COL_ID = 'race.id';
+    const COL_ID = 'sub_race.id';
+
+    /**
+     * the column name for the race_id field
+     */
+    const COL_RACE_ID = 'sub_race.race_id';
 
     /**
      * the column name for the name field
      */
-    const COL_NAME = 'race.name';
+    const COL_NAME = 'sub_race.name';
 
     /**
      * The default string format for model objects of the related table
@@ -93,11 +98,11 @@ class RaceTableMap extends TableMap
      * e.g. self::$fieldNames[self::TYPE_PHPNAME][0] = 'Id'
      */
     protected static $fieldNames = array (
-        self::TYPE_PHPNAME       => array('Id', 'Name', ),
-        self::TYPE_CAMELNAME     => array('id', 'name', ),
-        self::TYPE_COLNAME       => array(RaceTableMap::COL_ID, RaceTableMap::COL_NAME, ),
-        self::TYPE_FIELDNAME     => array('id', 'name', ),
-        self::TYPE_NUM           => array(0, 1, )
+        self::TYPE_PHPNAME       => array('Id', 'RaceId', 'Name', ),
+        self::TYPE_CAMELNAME     => array('id', 'raceId', 'name', ),
+        self::TYPE_COLNAME       => array(SubRaceTableMap::COL_ID, SubRaceTableMap::COL_RACE_ID, SubRaceTableMap::COL_NAME, ),
+        self::TYPE_FIELDNAME     => array('id', 'race_id', 'name', ),
+        self::TYPE_NUM           => array(0, 1, 2, )
     );
 
     /**
@@ -107,11 +112,11 @@ class RaceTableMap extends TableMap
      * e.g. self::$fieldKeys[self::TYPE_PHPNAME]['Id'] = 0
      */
     protected static $fieldKeys = array (
-        self::TYPE_PHPNAME       => array('Id' => 0, 'Name' => 1, ),
-        self::TYPE_CAMELNAME     => array('id' => 0, 'name' => 1, ),
-        self::TYPE_COLNAME       => array(RaceTableMap::COL_ID => 0, RaceTableMap::COL_NAME => 1, ),
-        self::TYPE_FIELDNAME     => array('id' => 0, 'name' => 1, ),
-        self::TYPE_NUM           => array(0, 1, )
+        self::TYPE_PHPNAME       => array('Id' => 0, 'RaceId' => 1, 'Name' => 2, ),
+        self::TYPE_CAMELNAME     => array('id' => 0, 'raceId' => 1, 'name' => 2, ),
+        self::TYPE_COLNAME       => array(SubRaceTableMap::COL_ID => 0, SubRaceTableMap::COL_RACE_ID => 1, SubRaceTableMap::COL_NAME => 2, ),
+        self::TYPE_FIELDNAME     => array('id' => 0, 'race_id' => 1, 'name' => 2, ),
+        self::TYPE_NUM           => array(0, 1, 2, )
     );
 
     /**
@@ -124,14 +129,15 @@ class RaceTableMap extends TableMap
     public function initialize()
     {
         // attributes
-        $this->setName('race');
-        $this->setPhpName('Race');
+        $this->setName('sub_race');
+        $this->setPhpName('SubRace');
         $this->setIdentifierQuoting(false);
-        $this->setClassName('\\App\\Models\\Race');
+        $this->setClassName('\\App\\Models\\SubRace');
         $this->setPackage('');
         $this->setUseIdGenerator(true);
         // columns
         $this->addPrimaryKey('id', 'Id', 'INTEGER', true, null, null);
+        $this->addForeignKey('race_id', 'RaceId', 'INTEGER', 'race', 'id', false, null, null);
         $this->addColumn('name', 'Name', 'VARCHAR', false, 255, null);
     } // initialize()
 
@@ -140,20 +146,13 @@ class RaceTableMap extends TableMap
      */
     public function buildRelations()
     {
-        $this->addRelation('Gender', '\\App\\Models\\Gender', RelationMap::ONE_TO_MANY, array (
+        $this->addRelation('Race', '\\App\\Models\\Race', RelationMap::MANY_TO_ONE, array (
   0 =>
   array (
     0 => ':race_id',
     1 => ':id',
   ),
-), null, null, 'Genders', false);
-        $this->addRelation('SubRace', '\\App\\Models\\SubRace', RelationMap::ONE_TO_MANY, array (
-  0 =>
-  array (
-    0 => ':race_id',
-    1 => ':id',
-  ),
-), null, null, 'SubRaces', false);
+), null, null, null, false);
     } // buildRelations()
 
     /**
@@ -213,7 +212,7 @@ class RaceTableMap extends TableMap
      */
     public static function getOMClass($withPrefix = true)
     {
-        return $withPrefix ? RaceTableMap::CLASS_DEFAULT : RaceTableMap::OM_CLASS;
+        return $withPrefix ? SubRaceTableMap::CLASS_DEFAULT : SubRaceTableMap::OM_CLASS;
     }
 
     /**
@@ -227,22 +226,22 @@ class RaceTableMap extends TableMap
      *
      * @throws PropelException Any exceptions caught during processing will be
      *                         rethrown wrapped into a PropelException.
-     * @return array           (Race object, last column rank)
+     * @return array           (SubRace object, last column rank)
      */
     public static function populateObject($row, $offset = 0, $indexType = TableMap::TYPE_NUM)
     {
-        $key = RaceTableMap::getPrimaryKeyHashFromRow($row, $offset, $indexType);
-        if (null !== ($obj = RaceTableMap::getInstanceFromPool($key))) {
+        $key = SubRaceTableMap::getPrimaryKeyHashFromRow($row, $offset, $indexType);
+        if (null !== ($obj = SubRaceTableMap::getInstanceFromPool($key))) {
             // We no longer rehydrate the object, since this can cause data loss.
             // See http://www.propelorm.org/ticket/509
             // $obj->hydrate($row, $offset, true); // rehydrate
-            $col = $offset + RaceTableMap::NUM_HYDRATE_COLUMNS;
+            $col = $offset + SubRaceTableMap::NUM_HYDRATE_COLUMNS;
         } else {
-            $cls = RaceTableMap::OM_CLASS;
-            /** @var Race $obj */
+            $cls = SubRaceTableMap::OM_CLASS;
+            /** @var SubRace $obj */
             $obj = new $cls();
             $col = $obj->hydrate($row, $offset, false, $indexType);
-            RaceTableMap::addInstanceToPool($obj, $key);
+            SubRaceTableMap::addInstanceToPool($obj, $key);
         }
 
         return array($obj, $col);
@@ -265,18 +264,18 @@ class RaceTableMap extends TableMap
         $cls = static::getOMClass(false);
         // populate the object(s)
         while ($row = $dataFetcher->fetch()) {
-            $key = RaceTableMap::getPrimaryKeyHashFromRow($row, 0, $dataFetcher->getIndexType());
-            if (null !== ($obj = RaceTableMap::getInstanceFromPool($key))) {
+            $key = SubRaceTableMap::getPrimaryKeyHashFromRow($row, 0, $dataFetcher->getIndexType());
+            if (null !== ($obj = SubRaceTableMap::getInstanceFromPool($key))) {
                 // We no longer rehydrate the object, since this can cause data loss.
                 // See http://www.propelorm.org/ticket/509
                 // $obj->hydrate($row, 0, true); // rehydrate
                 $results[] = $obj;
             } else {
-                /** @var Race $obj */
+                /** @var SubRace $obj */
                 $obj = new $cls();
                 $obj->hydrate($row);
                 $results[] = $obj;
-                RaceTableMap::addInstanceToPool($obj, $key);
+                SubRaceTableMap::addInstanceToPool($obj, $key);
             } // if key exists
         }
 
@@ -297,10 +296,12 @@ class RaceTableMap extends TableMap
     public static function addSelectColumns(Criteria $criteria, $alias = null)
     {
         if (null === $alias) {
-            $criteria->addSelectColumn(RaceTableMap::COL_ID);
-            $criteria->addSelectColumn(RaceTableMap::COL_NAME);
+            $criteria->addSelectColumn(SubRaceTableMap::COL_ID);
+            $criteria->addSelectColumn(SubRaceTableMap::COL_RACE_ID);
+            $criteria->addSelectColumn(SubRaceTableMap::COL_NAME);
         } else {
             $criteria->addSelectColumn($alias . '.id');
+            $criteria->addSelectColumn($alias . '.race_id');
             $criteria->addSelectColumn($alias . '.name');
         }
     }
@@ -314,7 +315,7 @@ class RaceTableMap extends TableMap
      */
     public static function getTableMap()
     {
-        return Propel::getServiceContainer()->getDatabaseMap(RaceTableMap::DATABASE_NAME)->getTable(RaceTableMap::TABLE_NAME);
+        return Propel::getServiceContainer()->getDatabaseMap(SubRaceTableMap::DATABASE_NAME)->getTable(SubRaceTableMap::TABLE_NAME);
     }
 
     /**
@@ -322,16 +323,16 @@ class RaceTableMap extends TableMap
      */
     public static function buildTableMap()
     {
-        $dbMap = Propel::getServiceContainer()->getDatabaseMap(RaceTableMap::DATABASE_NAME);
-        if (!$dbMap->hasTable(RaceTableMap::TABLE_NAME)) {
-            $dbMap->addTableObject(new RaceTableMap());
+        $dbMap = Propel::getServiceContainer()->getDatabaseMap(SubRaceTableMap::DATABASE_NAME);
+        if (!$dbMap->hasTable(SubRaceTableMap::TABLE_NAME)) {
+            $dbMap->addTableObject(new SubRaceTableMap());
         }
     }
 
     /**
-     * Performs a DELETE on the database, given a Race or Criteria object OR a primary key value.
+     * Performs a DELETE on the database, given a SubRace or Criteria object OR a primary key value.
      *
-     * @param mixed               $values Criteria or Race object or primary key or array of primary keys
+     * @param mixed               $values Criteria or SubRace object or primary key or array of primary keys
      *              which is used to create the DELETE statement
      * @param  ConnectionInterface $con the connection to use
      * @return int             The number of affected rows (if supported by underlying database driver).  This includes CASCADE-related rows
@@ -342,27 +343,27 @@ class RaceTableMap extends TableMap
      public static function doDelete($values, ConnectionInterface $con = null)
      {
         if (null === $con) {
-            $con = Propel::getServiceContainer()->getWriteConnection(RaceTableMap::DATABASE_NAME);
+            $con = Propel::getServiceContainer()->getWriteConnection(SubRaceTableMap::DATABASE_NAME);
         }
 
         if ($values instanceof Criteria) {
             // rename for clarity
             $criteria = $values;
-        } elseif ($values instanceof \App\Models\Race) { // it's a model object
+        } elseif ($values instanceof \App\Models\SubRace) { // it's a model object
             // create criteria based on pk values
             $criteria = $values->buildPkeyCriteria();
         } else { // it's a primary key, or an array of pks
-            $criteria = new Criteria(RaceTableMap::DATABASE_NAME);
-            $criteria->add(RaceTableMap::COL_ID, (array) $values, Criteria::IN);
+            $criteria = new Criteria(SubRaceTableMap::DATABASE_NAME);
+            $criteria->add(SubRaceTableMap::COL_ID, (array) $values, Criteria::IN);
         }
 
-        $query = RaceQuery::create()->mergeWith($criteria);
+        $query = SubRaceQuery::create()->mergeWith($criteria);
 
         if ($values instanceof Criteria) {
-            RaceTableMap::clearInstancePool();
+            SubRaceTableMap::clearInstancePool();
         } elseif (!is_object($values)) { // it's a primary key, or an array of pks
             foreach ((array) $values as $singleval) {
-                RaceTableMap::removeInstanceFromPool($singleval);
+                SubRaceTableMap::removeInstanceFromPool($singleval);
             }
         }
 
@@ -370,20 +371,20 @@ class RaceTableMap extends TableMap
     }
 
     /**
-     * Deletes all rows from the race table.
+     * Deletes all rows from the sub_race table.
      *
      * @param ConnectionInterface $con the connection to use
      * @return int The number of affected rows (if supported by underlying database driver).
      */
     public static function doDeleteAll(ConnectionInterface $con = null)
     {
-        return RaceQuery::create()->doDeleteAll($con);
+        return SubRaceQuery::create()->doDeleteAll($con);
     }
 
     /**
-     * Performs an INSERT on the database, given a Race or Criteria object.
+     * Performs an INSERT on the database, given a SubRace or Criteria object.
      *
-     * @param mixed               $criteria Criteria or Race object containing data that is used to create the INSERT statement.
+     * @param mixed               $criteria Criteria or SubRace object containing data that is used to create the INSERT statement.
      * @param ConnectionInterface $con the ConnectionInterface connection to use
      * @return mixed           The new primary key.
      * @throws PropelException Any exceptions caught during processing will be
@@ -392,22 +393,22 @@ class RaceTableMap extends TableMap
     public static function doInsert($criteria, ConnectionInterface $con = null)
     {
         if (null === $con) {
-            $con = Propel::getServiceContainer()->getWriteConnection(RaceTableMap::DATABASE_NAME);
+            $con = Propel::getServiceContainer()->getWriteConnection(SubRaceTableMap::DATABASE_NAME);
         }
 
         if ($criteria instanceof Criteria) {
             $criteria = clone $criteria; // rename for clarity
         } else {
-            $criteria = $criteria->buildCriteria(); // build Criteria from Race object
+            $criteria = $criteria->buildCriteria(); // build Criteria from SubRace object
         }
 
-        if ($criteria->containsKey(RaceTableMap::COL_ID) && $criteria->keyContainsValue(RaceTableMap::COL_ID) ) {
-            throw new PropelException('Cannot insert a value for auto-increment primary key ('.RaceTableMap::COL_ID.')');
+        if ($criteria->containsKey(SubRaceTableMap::COL_ID) && $criteria->keyContainsValue(SubRaceTableMap::COL_ID) ) {
+            throw new PropelException('Cannot insert a value for auto-increment primary key ('.SubRaceTableMap::COL_ID.')');
         }
 
 
         // Set the correct dbName
-        $query = RaceQuery::create()->mergeWith($criteria);
+        $query = SubRaceQuery::create()->mergeWith($criteria);
 
         // use transaction because $criteria could contain info
         // for more than one table (I guess, conceivably)
@@ -416,7 +417,7 @@ class RaceTableMap extends TableMap
         });
     }
 
-} // RaceTableMap
+} // SubRaceTableMap
 // This is the static code needed to register the TableMap for this table with the main Propel class.
 //
-RaceTableMap::buildTableMap();
+SubRaceTableMap::buildTableMap();

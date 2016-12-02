@@ -46,4 +46,13 @@
         </foreign-key>
     </table>
 
+    <table name="sub_race">
+        <column name="id" type="integer" primaryKey="true" autoIncrement="true"/>
+        <column name="race_id" type="integer"/>
+        <column name="name" type="varchar" size="255"/>
+        <foreign-key foreignTable="race">
+            <reference local="race_id" foreign="id"/>
+        </foreign-key>
+    </table>
+
 </database>

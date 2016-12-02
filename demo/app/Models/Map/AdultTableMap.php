@@ -152,7 +152,8 @@ class AdultTableMap extends TableMap
      */
     public function buildRelations()
     {
-        $this->addRelation('Gender', '\\App\\Models\\Gender', RelationMap::MANY_TO_ONE, array (0 =>
+        $this->addRelation('Gender', '\\App\\Models\\Gender', RelationMap::MANY_TO_ONE, array (
+  0 =>
   array (
     0 => ':gender_id',
     1 => ':id',
@@ -165,10 +166,7 @@ class AdultTableMap extends TableMap
     1 => ':id',
   ),
 ), null, null, 'ChildAdults', false);
-
         $this->addRelation('Child', '\\App\\Models\\Child', RelationMap::MANY_TO_MANY, array(), null, null, 'Children');
-
-
     } // buildRelations()
 
     /**

@@ -22,14 +22,14 @@ class TestDataTable extends DataTableConfig
 
     function setUpColumns()
     {
-        $this->addColumn(Column::create('Name'));
-        $this->addColumn(Column::create('Id'));
-
-        $this->addColumn(JoinColumn::create([
-            [
-                'Name' => 'Gender',
-                'JoinType' => JoinColumn::LEFT_JOIN,
-            ], 'Name']));
+//        $this->addColumn(Column::create('Name'));
+//        $this->addColumn(Column::create('Id'));
+//
+//        $this->addColumn(JoinColumn::create([
+//            [
+//                'Name' => 'Gender',
+//                'JoinType' => JoinColumn::LEFT_JOIN,
+//            ], 'Name']));
 
         $this->addColumn(
             GroupedJoinColumn::create(['Child', 'Name'])
@@ -37,14 +37,19 @@ class TestDataTable extends DataTableConfig
         );
 
 //        $this->addColumn(
+//            GroupedJoinColumn::create(['Gender', 'Race', 'SubRace', 'Name'])
+//                ->setSeparator('-')
+//        );
+
+//        $this->addColumn(
 //            JoinColumn::create(['Child', 'Name'])
 //        );
 
-        $this->addColumn(JoinColumn::create(['Gender', 'Race', 'Name']));
-
-        $this->addColumn(JoinColumn::create(['Gender', 'Something', 'Name']));
-
-        $this->addColumn(Column::create('DateOfBirth'));
+//        $this->addColumn(JoinColumn::create(['Gender', 'Race', 'Name']));
+//
+//        $this->addColumn(JoinColumn::create(['Gender', 'Something', 'Name']));
+//
+//        $this->addColumn(Column::create('DateOfBirth'));
     }
 
 }

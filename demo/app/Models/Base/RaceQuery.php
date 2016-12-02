@@ -44,7 +44,17 @@ use Propel\Runtime\Exception\PropelException;
  * @method     ChildRaceQuery rightJoinWithGender() Adds a RIGHT JOIN clause and with to the query using the Gender relation
  * @method     ChildRaceQuery innerJoinWithGender() Adds a INNER JOIN clause and with to the query using the Gender relation
  *
- * @method     \App\Models\GenderQuery endUse() Finalizes a secondary criteria and merges it with its primary Criteria
+ * @method     ChildRaceQuery leftJoinSubRace($relationAlias = null) Adds a LEFT JOIN clause to the query using the SubRace relation
+ * @method     ChildRaceQuery rightJoinSubRace($relationAlias = null) Adds a RIGHT JOIN clause to the query using the SubRace relation
+ * @method     ChildRaceQuery innerJoinSubRace($relationAlias = null) Adds a INNER JOIN clause to the query using the SubRace relation
+ *
+ * @method     ChildRaceQuery joinWithSubRace($joinType = Criteria::INNER_JOIN) Adds a join clause and with to the query using the SubRace relation
+ *
+ * @method     ChildRaceQuery leftJoinWithSubRace() Adds a LEFT JOIN clause and with to the query using the SubRace relation
+ * @method     ChildRaceQuery rightJoinWithSubRace() Adds a RIGHT JOIN clause and with to the query using the SubRace relation
+ * @method     ChildRaceQuery innerJoinWithSubRace() Adds a INNER JOIN clause and with to the query using the SubRace relation
+ *
+ * @method     \App\Models\GenderQuery|\App\Models\SubRaceQuery endUse() Finalizes a secondary criteria and merges it with its primary Criteria
  *
  * @method     ChildRace findOne(ConnectionInterface $con = null) Return the first ChildRace matching the query
  * @method     ChildRace findOneOrCreate(ConnectionInterface $con = null) Return the first ChildRace matching the query, or a new ChildRace object populated from the query conditions when no match is found
@@ -386,6 +396,79 @@ abstract class RaceQuery extends ModelCriteria
         return $this
             ->joinGender($relationAlias, $joinType)
             ->useQuery($relationAlias ? $relationAlias : 'Gender', '\App\Models\GenderQuery');
+    }
+
+    /**
+     * Filter the query by a related \App\Models\SubRace object
+     *
+     * @param \App\Models\SubRace|ObjectCollection $subRace the related object to use as filter
+     * @param string $comparison Operator to use for the column comparison, defaults to Criteria::EQUAL
+     *
+     * @return ChildRaceQuery The current query, for fluid interface
+     */
+    public function filterBySubRace($subRace, $comparison = null)
+    {
+        if ($subRace instanceof \App\Models\SubRace) {
+            return $this
+                ->addUsingAlias(RaceTableMap::COL_ID, $subRace->getRaceId(), $comparison);
+        } elseif ($subRace instanceof ObjectCollection) {
+            return $this
+                ->useSubRaceQuery()
+                ->filterByPrimaryKeys($subRace->getPrimaryKeys())
+                ->endUse();
+        } else {
+            throw new PropelException('filterBySubRace() only accepts arguments of type \App\Models\SubRace or Collection');
+        }
+    }
+
+    /**
+     * Adds a JOIN clause to the query using the SubRace relation
+     *
+     * @param     string $relationAlias optional alias for the relation
+     * @param     string $joinType Accepted values are null, 'left join', 'right join', 'inner join'
+     *
+     * @return $this|ChildRaceQuery The current query, for fluid interface
+     */
+    public function joinSubRace($relationAlias = null, $joinType = Criteria::LEFT_JOIN)
+    {
+        $tableMap = $this->getTableMap();
+        $relationMap = $tableMap->getRelation('SubRace');
+
+        // create a ModelJoin object for this join
+        $join = new ModelJoin();
+        $join->setJoinType($joinType);
+        $join->setRelationMap($relationMap, $this->useAliasInSQL ? $this->getModelAlias() : null, $relationAlias);
+        if ($previousJoin = $this->getPreviousJoin()) {
+            $join->setPreviousJoin($previousJoin);
+        }
+
+        // add the ModelJoin to the current object
+        if ($relationAlias) {
+            $this->addAlias($relationAlias, $relationMap->getRightTable()->getName());
+            $this->addJoinObject($join, $relationAlias);
+        } else {
+            $this->addJoinObject($join, 'SubRace');
+        }
+
+        return $this;
+    }
+
+    /**
+     * Use the SubRace relation SubRace object
+     *
+     * @see useQuery()
+     *
+     * @param     string $relationAlias optional alias for the relation,
+     *                                   to be used as main alias in the secondary query
+     * @param     string $joinType Accepted values are null, 'left join', 'right join', 'inner join'
+     *
+     * @return \App\Models\SubRaceQuery A secondary query class using the current class as primary query
+     */
+    public function useSubRaceQuery($relationAlias = null, $joinType = Criteria::LEFT_JOIN)
+    {
+        return $this
+            ->joinSubRace($relationAlias, $joinType)
+            ->useQuery($relationAlias ? $relationAlias : 'SubRace', '\App\Models\SubRaceQuery');
     }
 
     /**

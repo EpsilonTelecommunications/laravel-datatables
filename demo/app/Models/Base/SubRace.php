@@ -4,21 +4,15 @@ namespace App\Models\Base;
 
 use \Exception;
 use \PDO;
-use App\Models\Gender as ChildGender;
-use App\Models\GenderQuery as ChildGenderQuery;
 use App\Models\Race as ChildRace;
 use App\Models\RaceQuery as ChildRaceQuery;
-use App\Models\SubRace as ChildSubRace;
 use App\Models\SubRaceQuery as ChildSubRaceQuery;
-use App\Models\Map\GenderTableMap;
-use App\Models\Map\RaceTableMap;
 use App\Models\Map\SubRaceTableMap;
 use Propel\Runtime\Propel;
 use Propel\Runtime\ActiveQuery\Criteria;
 use Propel\Runtime\ActiveQuery\ModelCriteria;
 use Propel\Runtime\ActiveRecord\ActiveRecordInterface;
 use Propel\Runtime\Collection\Collection;
-use Propel\Runtime\Collection\ObjectCollection;
 use Propel\Runtime\Connection\ConnectionInterface;
 use Propel\Runtime\Exception\BadMethodCallException;
 use Propel\Runtime\Exception\LogicException;
@@ -27,18 +21,18 @@ use Propel\Runtime\Map\TableMap;
 use Propel\Runtime\Parser\AbstractParser;
 
 /**
- * Base class that represents a row from the 'race' table.
+ * Base class that represents a row from the 'sub_race' table.
  *
  *
  *
  * @package    propel.generator..Base
  */
-abstract class Race implements ActiveRecordInterface
+abstract class SubRace implements ActiveRecordInterface
 {
     /**
      * TableMap class name
      */
-    const TABLE_MAP = '\\App\\Models\\Map\\RaceTableMap';
+    const TABLE_MAP = '\\App\\Models\\Map\\SubRaceTableMap';
 
 
     /**
@@ -75,6 +69,13 @@ abstract class Race implements ActiveRecordInterface
     protected $id;
 
     /**
+     * The value for the race_id field.
+     *
+     * @var        int
+     */
+    protected $race_id;
+
+    /**
      * The value for the name field.
      *
      * @var        string
@@ -82,16 +83,9 @@ abstract class Race implements ActiveRecordInterface
     protected $name;
 
     /**
-     * @var        ObjectCollection|ChildGender[] Collection to store aggregation of ChildGender objects.
+     * @var        ChildRace
      */
-    protected $collGenders;
-    protected $collGendersPartial;
-
-    /**
-     * @var        ObjectCollection|ChildSubRace[] Collection to store aggregation of ChildSubRace objects.
-     */
-    protected $collSubRaces;
-    protected $collSubRacesPartial;
+    protected $aRace;
 
     /**
      * Flag to prevent endless save loop, if this object is referenced
@@ -102,19 +96,7 @@ abstract class Race implements ActiveRecordInterface
     protected $alreadyInSave = false;
 
     /**
-     * An array of objects scheduled for deletion.
-     * @var ObjectCollection|ChildGender[]
-     */
-    protected $gendersScheduledForDeletion = null;
-
-    /**
-     * An array of objects scheduled for deletion.
-     * @var ObjectCollection|ChildSubRace[]
-     */
-    protected $subRacesScheduledForDeletion = null;
-
-    /**
-     * Initializes internal state of App\Models\Base\Race object.
+     * Initializes internal state of App\Models\Base\SubRace object.
      */
     public function __construct()
     {
@@ -209,9 +191,9 @@ abstract class Race implements ActiveRecordInterface
     }
 
     /**
-     * Compares this with another <code>Race</code> instance.  If
-     * <code>obj</code> is an instance of <code>Race</code>, delegates to
-     * <code>equals(Race)</code>.  Otherwise, returns <code>false</code>.
+     * Compares this with another <code>SubRace</code> instance.  If
+     * <code>obj</code> is an instance of <code>SubRace</code>, delegates to
+     * <code>equals(SubRace)</code>.  Otherwise, returns <code>false</code>.
      *
      * @param  mixed   $obj The object to compare to.
      * @return boolean Whether equal to the object specified.
@@ -277,7 +259,7 @@ abstract class Race implements ActiveRecordInterface
      * @param string $name  The virtual column name
      * @param mixed  $value The value to give to the virtual column
      *
-     * @return $this|Race The current object, for fluid interface
+     * @return $this|SubRace The current object, for fluid interface
      */
     public function setVirtualColumn($name, $value)
     {
@@ -349,6 +331,16 @@ abstract class Race implements ActiveRecordInterface
     }
 
     /**
+     * Get the [race_id] column value.
+     *
+     * @return int
+     */
+    public function getRaceId()
+    {
+        return $this->race_id;
+    }
+
+    /**
      * Get the [name] column value.
      *
      * @return string
@@ -362,7 +354,7 @@ abstract class Race implements ActiveRecordInterface
      * Set the value of [id] column.
      *
      * @param int $v new value
-     * @return $this|\App\Models\Race The current object (for fluent API support)
+     * @return $this|\App\Models\SubRace The current object (for fluent API support)
      */
     public function setId($v)
     {
@@ -372,17 +364,41 @@ abstract class Race implements ActiveRecordInterface
 
         if ($this->id !== $v) {
             $this->id = $v;
-            $this->modifiedColumns[RaceTableMap::COL_ID] = true;
+            $this->modifiedColumns[SubRaceTableMap::COL_ID] = true;
         }
 
         return $this;
     } // setId()
 
     /**
+     * Set the value of [race_id] column.
+     *
+     * @param int $v new value
+     * @return $this|\App\Models\SubRace The current object (for fluent API support)
+     */
+    public function setRaceId($v)
+    {
+        if ($v !== null) {
+            $v = (int) $v;
+        }
+
+        if ($this->race_id !== $v) {
+            $this->race_id = $v;
+            $this->modifiedColumns[SubRaceTableMap::COL_RACE_ID] = true;
+        }
+
+        if ($this->aRace !== null && $this->aRace->getId() !== $v) {
+            $this->aRace = null;
+        }
+
+        return $this;
+    } // setRaceId()
+
+    /**
      * Set the value of [name] column.
      *
      * @param string $v new value
-     * @return $this|\App\Models\Race The current object (for fluent API support)
+     * @return $this|\App\Models\SubRace The current object (for fluent API support)
      */
     public function setName($v)
     {
@@ -392,7 +408,7 @@ abstract class Race implements ActiveRecordInterface
 
         if ($this->name !== $v) {
             $this->name = $v;
-            $this->modifiedColumns[RaceTableMap::COL_NAME] = true;
+            $this->modifiedColumns[SubRaceTableMap::COL_NAME] = true;
         }
 
         return $this;
@@ -434,10 +450,13 @@ abstract class Race implements ActiveRecordInterface
     {
         try {
 
-            $col = $row[TableMap::TYPE_NUM == $indexType ? 0 + $startcol : RaceTableMap::translateFieldName('Id', TableMap::TYPE_PHPNAME, $indexType)];
+            $col = $row[TableMap::TYPE_NUM == $indexType ? 0 + $startcol : SubRaceTableMap::translateFieldName('Id', TableMap::TYPE_PHPNAME, $indexType)];
             $this->id = (null !== $col) ? (int) $col : null;
 
-            $col = $row[TableMap::TYPE_NUM == $indexType ? 1 + $startcol : RaceTableMap::translateFieldName('Name', TableMap::TYPE_PHPNAME, $indexType)];
+            $col = $row[TableMap::TYPE_NUM == $indexType ? 1 + $startcol : SubRaceTableMap::translateFieldName('RaceId', TableMap::TYPE_PHPNAME, $indexType)];
+            $this->race_id = (null !== $col) ? (int) $col : null;
+
+            $col = $row[TableMap::TYPE_NUM == $indexType ? 2 + $startcol : SubRaceTableMap::translateFieldName('Name', TableMap::TYPE_PHPNAME, $indexType)];
             $this->name = (null !== $col) ? (string) $col : null;
             $this->resetModified();
 
@@ -447,10 +466,10 @@ abstract class Race implements ActiveRecordInterface
                 $this->ensureConsistency();
             }
 
-            return $startcol + 2; // 2 = RaceTableMap::NUM_HYDRATE_COLUMNS.
+            return $startcol + 3; // 3 = SubRaceTableMap::NUM_HYDRATE_COLUMNS.
 
         } catch (Exception $e) {
-            throw new PropelException(sprintf('Error populating %s object', '\\App\\Models\\Race'), 0, $e);
+            throw new PropelException(sprintf('Error populating %s object', '\\App\\Models\\SubRace'), 0, $e);
         }
     }
 
@@ -469,6 +488,9 @@ abstract class Race implements ActiveRecordInterface
      */
     public function ensureConsistency()
     {
+        if ($this->aRace !== null && $this->race_id !== $this->aRace->getId()) {
+            $this->aRace = null;
+        }
     } // ensureConsistency
 
     /**
@@ -492,13 +514,13 @@ abstract class Race implements ActiveRecordInterface
         }
 
         if ($con === null) {
-            $con = Propel::getServiceContainer()->getReadConnection(RaceTableMap::DATABASE_NAME);
+            $con = Propel::getServiceContainer()->getReadConnection(SubRaceTableMap::DATABASE_NAME);
         }
 
         // We don't need to alter the object instance pool; we're just modifying this instance
         // already in the pool.
 
-        $dataFetcher = ChildRaceQuery::create(null, $this->buildPkeyCriteria())->setFormatter(ModelCriteria::FORMAT_STATEMENT)->find($con);
+        $dataFetcher = ChildSubRaceQuery::create(null, $this->buildPkeyCriteria())->setFormatter(ModelCriteria::FORMAT_STATEMENT)->find($con);
         $row = $dataFetcher->fetch();
         $dataFetcher->close();
         if (!$row) {
@@ -508,10 +530,7 @@ abstract class Race implements ActiveRecordInterface
 
         if ($deep) {  // also de-associate any related objects?
 
-            $this->collGenders = null;
-
-            $this->collSubRaces = null;
-
+            $this->aRace = null;
         } // if (deep)
     }
 
@@ -521,8 +540,8 @@ abstract class Race implements ActiveRecordInterface
      * @param      ConnectionInterface $con
      * @return void
      * @throws PropelException
-     * @see Race::setDeleted()
-     * @see Race::isDeleted()
+     * @see SubRace::setDeleted()
+     * @see SubRace::isDeleted()
      */
     public function delete(ConnectionInterface $con = null)
     {
@@ -531,11 +550,11 @@ abstract class Race implements ActiveRecordInterface
         }
 
         if ($con === null) {
-            $con = Propel::getServiceContainer()->getWriteConnection(RaceTableMap::DATABASE_NAME);
+            $con = Propel::getServiceContainer()->getWriteConnection(SubRaceTableMap::DATABASE_NAME);
         }
 
         $con->transaction(function () use ($con) {
-            $deleteQuery = ChildRaceQuery::create()
+            $deleteQuery = ChildSubRaceQuery::create()
                 ->filterByPrimaryKey($this->getPrimaryKey());
             $ret = $this->preDelete($con);
             if ($ret) {
@@ -566,7 +585,7 @@ abstract class Race implements ActiveRecordInterface
         }
 
         if ($con === null) {
-            $con = Propel::getServiceContainer()->getWriteConnection(RaceTableMap::DATABASE_NAME);
+            $con = Propel::getServiceContainer()->getWriteConnection(SubRaceTableMap::DATABASE_NAME);
         }
 
         return $con->transaction(function () use ($con) {
@@ -585,7 +604,7 @@ abstract class Race implements ActiveRecordInterface
                     $this->postUpdate($con);
                 }
                 $this->postSave($con);
-                RaceTableMap::addInstanceToPool($this);
+                SubRaceTableMap::addInstanceToPool($this);
             } else {
                 $affectedRows = 0;
             }
@@ -611,6 +630,18 @@ abstract class Race implements ActiveRecordInterface
         if (!$this->alreadyInSave) {
             $this->alreadyInSave = true;
 
+            // We call the save method on the following object(s) if they
+            // were passed to this object by their corresponding set
+            // method.  This object relates to these object(s) by a
+            // foreign key reference.
+
+            if ($this->aRace !== null) {
+                if ($this->aRace->isModified() || $this->aRace->isNew()) {
+                    $affectedRows += $this->aRace->save($con);
+                }
+                $this->setRace($this->aRace);
+            }
+
             if ($this->isNew() || $this->isModified()) {
                 // persist changes
                 if ($this->isNew()) {
@@ -620,42 +651,6 @@ abstract class Race implements ActiveRecordInterface
                     $affectedRows += $this->doUpdate($con);
                 }
                 $this->resetModified();
-            }
-
-            if ($this->gendersScheduledForDeletion !== null) {
-                if (!$this->gendersScheduledForDeletion->isEmpty()) {
-                    foreach ($this->gendersScheduledForDeletion as $gender) {
-                        // need to save related object because we set the relation to null
-                        $gender->save($con);
-                    }
-                    $this->gendersScheduledForDeletion = null;
-                }
-            }
-
-            if ($this->collGenders !== null) {
-                foreach ($this->collGenders as $referrerFK) {
-                    if (!$referrerFK->isDeleted() && ($referrerFK->isNew() || $referrerFK->isModified())) {
-                        $affectedRows += $referrerFK->save($con);
-                    }
-                }
-            }
-
-            if ($this->subRacesScheduledForDeletion !== null) {
-                if (!$this->subRacesScheduledForDeletion->isEmpty()) {
-                    foreach ($this->subRacesScheduledForDeletion as $subRace) {
-                        // need to save related object because we set the relation to null
-                        $subRace->save($con);
-                    }
-                    $this->subRacesScheduledForDeletion = null;
-                }
-            }
-
-            if ($this->collSubRaces !== null) {
-                foreach ($this->collSubRaces as $referrerFK) {
-                    if (!$referrerFK->isDeleted() && ($referrerFK->isNew() || $referrerFK->isModified())) {
-                        $affectedRows += $referrerFK->save($con);
-                    }
-                }
             }
 
             $this->alreadyInSave = false;
@@ -678,21 +673,24 @@ abstract class Race implements ActiveRecordInterface
         $modifiedColumns = array();
         $index = 0;
 
-        $this->modifiedColumns[RaceTableMap::COL_ID] = true;
+        $this->modifiedColumns[SubRaceTableMap::COL_ID] = true;
         if (null !== $this->id) {
-            throw new PropelException('Cannot insert a value for auto-increment primary key (' . RaceTableMap::COL_ID . ')');
+            throw new PropelException('Cannot insert a value for auto-increment primary key (' . SubRaceTableMap::COL_ID . ')');
         }
 
          // check the columns in natural order for more readable SQL queries
-        if ($this->isColumnModified(RaceTableMap::COL_ID)) {
+        if ($this->isColumnModified(SubRaceTableMap::COL_ID)) {
             $modifiedColumns[':p' . $index++]  = 'id';
         }
-        if ($this->isColumnModified(RaceTableMap::COL_NAME)) {
+        if ($this->isColumnModified(SubRaceTableMap::COL_RACE_ID)) {
+            $modifiedColumns[':p' . $index++]  = 'race_id';
+        }
+        if ($this->isColumnModified(SubRaceTableMap::COL_NAME)) {
             $modifiedColumns[':p' . $index++]  = 'name';
         }
 
         $sql = sprintf(
-            'INSERT INTO race (%s) VALUES (%s)',
+            'INSERT INTO sub_race (%s) VALUES (%s)',
             implode(', ', $modifiedColumns),
             implode(', ', array_keys($modifiedColumns))
         );
@@ -703,6 +701,9 @@ abstract class Race implements ActiveRecordInterface
                 switch ($columnName) {
                     case 'id':
                         $stmt->bindValue($identifier, $this->id, PDO::PARAM_INT);
+                        break;
+                    case 'race_id':
+                        $stmt->bindValue($identifier, $this->race_id, PDO::PARAM_INT);
                         break;
                     case 'name':
                         $stmt->bindValue($identifier, $this->name, PDO::PARAM_STR);
@@ -753,7 +754,7 @@ abstract class Race implements ActiveRecordInterface
      */
     public function getByName($name, $type = TableMap::TYPE_PHPNAME)
     {
-        $pos = RaceTableMap::translateFieldName($name, $type, TableMap::TYPE_NUM);
+        $pos = SubRaceTableMap::translateFieldName($name, $type, TableMap::TYPE_NUM);
         $field = $this->getByPosition($pos);
 
         return $field;
@@ -773,6 +774,9 @@ abstract class Race implements ActiveRecordInterface
                 return $this->getId();
                 break;
             case 1:
+                return $this->getRaceId();
+                break;
+            case 2:
                 return $this->getName();
                 break;
             default:
@@ -799,14 +803,15 @@ abstract class Race implements ActiveRecordInterface
     public function toArray($keyType = TableMap::TYPE_PHPNAME, $includeLazyLoadColumns = true, $alreadyDumpedObjects = array(), $includeForeignObjects = false)
     {
 
-        if (isset($alreadyDumpedObjects['Race'][$this->hashCode()])) {
+        if (isset($alreadyDumpedObjects['SubRace'][$this->hashCode()])) {
             return '*RECURSION*';
         }
-        $alreadyDumpedObjects['Race'][$this->hashCode()] = true;
-        $keys = RaceTableMap::getFieldNames($keyType);
+        $alreadyDumpedObjects['SubRace'][$this->hashCode()] = true;
+        $keys = SubRaceTableMap::getFieldNames($keyType);
         $result = array(
             $keys[0] => $this->getId(),
-            $keys[1] => $this->getName(),
+            $keys[1] => $this->getRaceId(),
+            $keys[2] => $this->getName(),
         );
         $virtualColumns = $this->virtualColumns;
         foreach ($virtualColumns as $key => $virtualColumn) {
@@ -814,35 +819,20 @@ abstract class Race implements ActiveRecordInterface
         }
 
         if ($includeForeignObjects) {
-            if (null !== $this->collGenders) {
+            if (null !== $this->aRace) {
 
                 switch ($keyType) {
                     case TableMap::TYPE_CAMELNAME:
-                        $key = 'genders';
+                        $key = 'race';
                         break;
                     case TableMap::TYPE_FIELDNAME:
-                        $key = 'genders';
+                        $key = 'race';
                         break;
                     default:
-                        $key = 'Genders';
+                        $key = 'Race';
                 }
 
-                $result[$key] = $this->collGenders->toArray(null, false, $keyType, $includeLazyLoadColumns, $alreadyDumpedObjects);
-            }
-            if (null !== $this->collSubRaces) {
-
-                switch ($keyType) {
-                    case TableMap::TYPE_CAMELNAME:
-                        $key = 'subRaces';
-                        break;
-                    case TableMap::TYPE_FIELDNAME:
-                        $key = 'sub_races';
-                        break;
-                    default:
-                        $key = 'SubRaces';
-                }
-
-                $result[$key] = $this->collSubRaces->toArray(null, false, $keyType, $includeLazyLoadColumns, $alreadyDumpedObjects);
+                $result[$key] = $this->aRace->toArray($keyType, $includeLazyLoadColumns,  $alreadyDumpedObjects, true);
             }
         }
 
@@ -858,11 +848,11 @@ abstract class Race implements ActiveRecordInterface
      *                one of the class type constants TableMap::TYPE_PHPNAME, TableMap::TYPE_CAMELNAME
      *                TableMap::TYPE_COLNAME, TableMap::TYPE_FIELDNAME, TableMap::TYPE_NUM.
      *                Defaults to TableMap::TYPE_PHPNAME.
-     * @return $this|\App\Models\Race
+     * @return $this|\App\Models\SubRace
      */
     public function setByName($name, $value, $type = TableMap::TYPE_PHPNAME)
     {
-        $pos = RaceTableMap::translateFieldName($name, $type, TableMap::TYPE_NUM);
+        $pos = SubRaceTableMap::translateFieldName($name, $type, TableMap::TYPE_NUM);
 
         return $this->setByPosition($pos, $value);
     }
@@ -873,7 +863,7 @@ abstract class Race implements ActiveRecordInterface
      *
      * @param  int $pos position in xml schema
      * @param  mixed $value field value
-     * @return $this|\App\Models\Race
+     * @return $this|\App\Models\SubRace
      */
     public function setByPosition($pos, $value)
     {
@@ -882,6 +872,9 @@ abstract class Race implements ActiveRecordInterface
                 $this->setId($value);
                 break;
             case 1:
+                $this->setRaceId($value);
+                break;
+            case 2:
                 $this->setName($value);
                 break;
         } // switch()
@@ -908,13 +901,16 @@ abstract class Race implements ActiveRecordInterface
      */
     public function fromArray($arr, $keyType = TableMap::TYPE_PHPNAME)
     {
-        $keys = RaceTableMap::getFieldNames($keyType);
+        $keys = SubRaceTableMap::getFieldNames($keyType);
 
         if (array_key_exists($keys[0], $arr)) {
             $this->setId($arr[$keys[0]]);
         }
         if (array_key_exists($keys[1], $arr)) {
-            $this->setName($arr[$keys[1]]);
+            $this->setRaceId($arr[$keys[1]]);
+        }
+        if (array_key_exists($keys[2], $arr)) {
+            $this->setName($arr[$keys[2]]);
         }
     }
 
@@ -935,7 +931,7 @@ abstract class Race implements ActiveRecordInterface
      * @param string $data The source data to import from
      * @param string $keyType The type of keys the array uses.
      *
-     * @return $this|\App\Models\Race The current object, for fluid interface
+     * @return $this|\App\Models\SubRace The current object, for fluid interface
      */
     public function importFrom($parser, $data, $keyType = TableMap::TYPE_PHPNAME)
     {
@@ -955,13 +951,16 @@ abstract class Race implements ActiveRecordInterface
      */
     public function buildCriteria()
     {
-        $criteria = new Criteria(RaceTableMap::DATABASE_NAME);
+        $criteria = new Criteria(SubRaceTableMap::DATABASE_NAME);
 
-        if ($this->isColumnModified(RaceTableMap::COL_ID)) {
-            $criteria->add(RaceTableMap::COL_ID, $this->id);
+        if ($this->isColumnModified(SubRaceTableMap::COL_ID)) {
+            $criteria->add(SubRaceTableMap::COL_ID, $this->id);
         }
-        if ($this->isColumnModified(RaceTableMap::COL_NAME)) {
-            $criteria->add(RaceTableMap::COL_NAME, $this->name);
+        if ($this->isColumnModified(SubRaceTableMap::COL_RACE_ID)) {
+            $criteria->add(SubRaceTableMap::COL_RACE_ID, $this->race_id);
+        }
+        if ($this->isColumnModified(SubRaceTableMap::COL_NAME)) {
+            $criteria->add(SubRaceTableMap::COL_NAME, $this->name);
         }
 
         return $criteria;
@@ -979,8 +978,8 @@ abstract class Race implements ActiveRecordInterface
      */
     public function buildPkeyCriteria()
     {
-        $criteria = ChildRaceQuery::create();
-        $criteria->add(RaceTableMap::COL_ID, $this->id);
+        $criteria = ChildSubRaceQuery::create();
+        $criteria->add(SubRaceTableMap::COL_ID, $this->id);
 
         return $criteria;
     }
@@ -1042,34 +1041,15 @@ abstract class Race implements ActiveRecordInterface
      * If desired, this method can also make copies of all associated (fkey referrers)
      * objects.
      *
-     * @param      object $copyObj An object of \App\Models\Race (or compatible) type.
+     * @param      object $copyObj An object of \App\Models\SubRace (or compatible) type.
      * @param      boolean $deepCopy Whether to also copy all rows that refer (by fkey) to the current row.
      * @param      boolean $makeNew Whether to reset autoincrement PKs and make the object new.
      * @throws PropelException
      */
     public function copyInto($copyObj, $deepCopy = false, $makeNew = true)
     {
+        $copyObj->setRaceId($this->getRaceId());
         $copyObj->setName($this->getName());
-
-        if ($deepCopy) {
-            // important: temporarily setNew(false) because this affects the behavior of
-            // the getter/setter methods for fkey referrer objects.
-            $copyObj->setNew(false);
-
-            foreach ($this->getGenders() as $relObj) {
-                if ($relObj !== $this) {  // ensure that we don't try to copy a reference to ourselves
-                    $copyObj->addGender($relObj->copy($deepCopy));
-                }
-            }
-
-            foreach ($this->getSubRaces() as $relObj) {
-                if ($relObj !== $this) {  // ensure that we don't try to copy a reference to ourselves
-                    $copyObj->addSubRace($relObj->copy($deepCopy));
-                }
-            }
-
-        } // if ($deepCopy)
-
         if ($makeNew) {
             $copyObj->setNew(true);
             $copyObj->setId(NULL); // this is a auto-increment column, so set to default value
@@ -1085,7 +1065,7 @@ abstract class Race implements ActiveRecordInterface
      * objects.
      *
      * @param  boolean $deepCopy Whether to also copy all rows that refer (by fkey) to the current row.
-     * @return \App\Models\Race Clone of current object.
+     * @return \App\Models\SubRace Clone of current object.
      * @throws PropelException
      */
     public function copy($deepCopy = false)
@@ -1098,473 +1078,55 @@ abstract class Race implements ActiveRecordInterface
         return $copyObj;
     }
 
-
     /**
-     * Initializes a collection based on the name of a relation.
-     * Avoids crafting an 'init[$relationName]s' method name
-     * that wouldn't work when StandardEnglishPluralizer is used.
+     * Declares an association between this object and a ChildRace object.
      *
-     * @param      string $relationName The name of the relation to initialize
-     * @return void
-     */
-    public function initRelation($relationName)
-    {
-        if ('Gender' == $relationName) {
-            return $this->initGenders();
-        }
-        if ('SubRace' == $relationName) {
-            return $this->initSubRaces();
-        }
-    }
-
-    /**
-     * Clears out the collGenders collection
-     *
-     * This does not modify the database; however, it will remove any associated objects, causing
-     * them to be refetched by subsequent calls to accessor method.
-     *
-     * @return void
-     * @see        addGenders()
-     */
-    public function clearGenders()
-    {
-        $this->collGenders = null; // important to set this to NULL since that means it is uninitialized
-    }
-
-    /**
-     * Reset is the collGenders collection loaded partially.
-     */
-    public function resetPartialGenders($v = true)
-    {
-        $this->collGendersPartial = $v;
-    }
-
-    /**
-     * Initializes the collGenders collection.
-     *
-     * By default this just sets the collGenders collection to an empty array (like clearcollGenders());
-     * however, you may wish to override this method in your stub class to provide setting appropriate
-     * to your application -- for example, setting the initial array to the values stored in database.
-     *
-     * @param      boolean $overrideExisting If set to true, the method call initializes
-     *                                        the collection even if it is not empty
-     *
-     * @return void
-     */
-    public function initGenders($overrideExisting = true)
-    {
-        if (null !== $this->collGenders && !$overrideExisting) {
-            return;
-        }
-
-        $collectionClassName = GenderTableMap::getTableMap()->getCollectionClassName();
-
-        $this->collGenders = new $collectionClassName;
-        $this->collGenders->setModel('\App\Models\Gender');
-    }
-
-    /**
-     * Gets an array of ChildGender objects which contain a foreign key that references this object.
-     *
-     * If the $criteria is not null, it is used to always fetch the results from the database.
-     * Otherwise the results are fetched from the database the first time, then cached.
-     * Next time the same method is called without $criteria, the cached collection is returned.
-     * If this ChildRace is new, it will return
-     * an empty collection or the current collection; the criteria is ignored on a new object.
-     *
-     * @param      Criteria $criteria optional Criteria object to narrow the query
-     * @param      ConnectionInterface $con optional connection object
-     * @return ObjectCollection|ChildGender[] List of ChildGender objects
+     * @param  ChildRace $v
+     * @return $this|\App\Models\SubRace The current object (for fluent API support)
      * @throws PropelException
      */
-    public function getGenders(Criteria $criteria = null, ConnectionInterface $con = null)
+    public function setRace(ChildRace $v = null)
     {
-        $partial = $this->collGendersPartial && !$this->isNew();
-        if (null === $this->collGenders || null !== $criteria  || $partial) {
-            if ($this->isNew() && null === $this->collGenders) {
-                // return empty collection
-                $this->initGenders();
-            } else {
-                $collGenders = ChildGenderQuery::create(null, $criteria)
-                    ->filterByRace($this)
-                    ->find($con);
-
-                if (null !== $criteria) {
-                    if (false !== $this->collGendersPartial && count($collGenders)) {
-                        $this->initGenders(false);
-
-                        foreach ($collGenders as $obj) {
-                            if (false == $this->collGenders->contains($obj)) {
-                                $this->collGenders->append($obj);
-                            }
-                        }
-
-                        $this->collGendersPartial = true;
-                    }
-
-                    return $collGenders;
-                }
-
-                if ($partial && $this->collGenders) {
-                    foreach ($this->collGenders as $obj) {
-                        if ($obj->isNew()) {
-                            $collGenders[] = $obj;
-                        }
-                    }
-                }
-
-                $this->collGenders = $collGenders;
-                $this->collGendersPartial = false;
-            }
+        if ($v === null) {
+            $this->setRaceId(NULL);
+        } else {
+            $this->setRaceId($v->getId());
         }
 
-        return $this->collGenders;
-    }
+        $this->aRace = $v;
 
-    /**
-     * Sets a collection of ChildGender objects related by a one-to-many relationship
-     * to the current object.
-     * It will also schedule objects for deletion based on a diff between old objects (aka persisted)
-     * and new objects from the given Propel collection.
-     *
-     * @param      Collection $genders A Propel collection.
-     * @param      ConnectionInterface $con Optional connection object
-     * @return $this|ChildRace The current object (for fluent API support)
-     */
-    public function setGenders(Collection $genders, ConnectionInterface $con = null)
-    {
-        /** @var ChildGender[] $gendersToDelete */
-        $gendersToDelete = $this->getGenders(new Criteria(), $con)->diff($genders);
-
-
-        $this->gendersScheduledForDeletion = $gendersToDelete;
-
-        foreach ($gendersToDelete as $genderRemoved) {
-            $genderRemoved->setRace(null);
+        // Add binding for other direction of this n:n relationship.
+        // If this object has already been added to the ChildRace object, it will not be re-added.
+        if ($v !== null) {
+            $v->addSubRace($this);
         }
 
-        $this->collGenders = null;
-        foreach ($genders as $gender) {
-            $this->addGender($gender);
-        }
-
-        $this->collGenders = $genders;
-        $this->collGendersPartial = false;
 
         return $this;
     }
 
+
     /**
-     * Returns the number of related Gender objects.
+     * Get the associated ChildRace object
      *
-     * @param      Criteria $criteria
-     * @param      boolean $distinct
-     * @param      ConnectionInterface $con
-     * @return int             Count of related Gender objects.
+     * @param  ConnectionInterface $con Optional Connection object.
+     * @return ChildRace The associated ChildRace object.
      * @throws PropelException
      */
-    public function countGenders(Criteria $criteria = null, $distinct = false, ConnectionInterface $con = null)
+    public function getRace(ConnectionInterface $con = null)
     {
-        $partial = $this->collGendersPartial && !$this->isNew();
-        if (null === $this->collGenders || null !== $criteria || $partial) {
-            if ($this->isNew() && null === $this->collGenders) {
-                return 0;
-            }
-
-            if ($partial && !$criteria) {
-                return count($this->getGenders());
-            }
-
-            $query = ChildGenderQuery::create(null, $criteria);
-            if ($distinct) {
-                $query->distinct();
-            }
-
-            return $query
-                ->filterByRace($this)
-                ->count($con);
+        if ($this->aRace === null && ($this->race_id !== null)) {
+            $this->aRace = ChildRaceQuery::create()->findPk($this->race_id, $con);
+            /* The following can be used additionally to
+                guarantee the related object contains a reference
+                to this object.  This level of coupling may, however, be
+                undesirable since it could result in an only partially populated collection
+                in the referenced object.
+                $this->aRace->addSubRaces($this);
+             */
         }
 
-        return count($this->collGenders);
-    }
-
-    /**
-     * Method called to associate a ChildGender object to this object
-     * through the ChildGender foreign key attribute.
-     *
-     * @param  ChildGender $l ChildGender
-     * @return $this|\App\Models\Race The current object (for fluent API support)
-     */
-    public function addGender(ChildGender $l)
-    {
-        if ($this->collGenders === null) {
-            $this->initGenders();
-            $this->collGendersPartial = true;
-        }
-
-        if (!$this->collGenders->contains($l)) {
-            $this->doAddGender($l);
-
-            if ($this->gendersScheduledForDeletion and $this->gendersScheduledForDeletion->contains($l)) {
-                $this->gendersScheduledForDeletion->remove($this->gendersScheduledForDeletion->search($l));
-            }
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param ChildGender $gender The ChildGender object to add.
-     */
-    protected function doAddGender(ChildGender $gender)
-    {
-        $this->collGenders[]= $gender;
-        $gender->setRace($this);
-    }
-
-    /**
-     * @param  ChildGender $gender The ChildGender object to remove.
-     * @return $this|ChildRace The current object (for fluent API support)
-     */
-    public function removeGender(ChildGender $gender)
-    {
-        if ($this->getGenders()->contains($gender)) {
-            $pos = $this->collGenders->search($gender);
-            $this->collGenders->remove($pos);
-            if (null === $this->gendersScheduledForDeletion) {
-                $this->gendersScheduledForDeletion = clone $this->collGenders;
-                $this->gendersScheduledForDeletion->clear();
-            }
-            $this->gendersScheduledForDeletion[]= $gender;
-            $gender->setRace(null);
-        }
-
-        return $this;
-    }
-
-    /**
-     * Clears out the collSubRaces collection
-     *
-     * This does not modify the database; however, it will remove any associated objects, causing
-     * them to be refetched by subsequent calls to accessor method.
-     *
-     * @return void
-     * @see        addSubRaces()
-     */
-    public function clearSubRaces()
-    {
-        $this->collSubRaces = null; // important to set this to NULL since that means it is uninitialized
-    }
-
-    /**
-     * Reset is the collSubRaces collection loaded partially.
-     */
-    public function resetPartialSubRaces($v = true)
-    {
-        $this->collSubRacesPartial = $v;
-    }
-
-    /**
-     * Initializes the collSubRaces collection.
-     *
-     * By default this just sets the collSubRaces collection to an empty array (like clearcollSubRaces());
-     * however, you may wish to override this method in your stub class to provide setting appropriate
-     * to your application -- for example, setting the initial array to the values stored in database.
-     *
-     * @param      boolean $overrideExisting If set to true, the method call initializes
-     *                                        the collection even if it is not empty
-     *
-     * @return void
-     */
-    public function initSubRaces($overrideExisting = true)
-    {
-        if (null !== $this->collSubRaces && !$overrideExisting) {
-            return;
-        }
-
-        $collectionClassName = SubRaceTableMap::getTableMap()->getCollectionClassName();
-
-        $this->collSubRaces = new $collectionClassName;
-        $this->collSubRaces->setModel('\App\Models\SubRace');
-    }
-
-    /**
-     * Gets an array of ChildSubRace objects which contain a foreign key that references this object.
-     *
-     * If the $criteria is not null, it is used to always fetch the results from the database.
-     * Otherwise the results are fetched from the database the first time, then cached.
-     * Next time the same method is called without $criteria, the cached collection is returned.
-     * If this ChildRace is new, it will return
-     * an empty collection or the current collection; the criteria is ignored on a new object.
-     *
-     * @param      Criteria $criteria optional Criteria object to narrow the query
-     * @param      ConnectionInterface $con optional connection object
-     * @return ObjectCollection|ChildSubRace[] List of ChildSubRace objects
-     * @throws PropelException
-     */
-    public function getSubRaces(Criteria $criteria = null, ConnectionInterface $con = null)
-    {
-        $partial = $this->collSubRacesPartial && !$this->isNew();
-        if (null === $this->collSubRaces || null !== $criteria  || $partial) {
-            if ($this->isNew() && null === $this->collSubRaces) {
-                // return empty collection
-                $this->initSubRaces();
-            } else {
-                $collSubRaces = ChildSubRaceQuery::create(null, $criteria)
-                    ->filterByRace($this)
-                    ->find($con);
-
-                if (null !== $criteria) {
-                    if (false !== $this->collSubRacesPartial && count($collSubRaces)) {
-                        $this->initSubRaces(false);
-
-                        foreach ($collSubRaces as $obj) {
-                            if (false == $this->collSubRaces->contains($obj)) {
-                                $this->collSubRaces->append($obj);
-                            }
-                        }
-
-                        $this->collSubRacesPartial = true;
-                    }
-
-                    return $collSubRaces;
-                }
-
-                if ($partial && $this->collSubRaces) {
-                    foreach ($this->collSubRaces as $obj) {
-                        if ($obj->isNew()) {
-                            $collSubRaces[] = $obj;
-                        }
-                    }
-                }
-
-                $this->collSubRaces = $collSubRaces;
-                $this->collSubRacesPartial = false;
-            }
-        }
-
-        return $this->collSubRaces;
-    }
-
-    /**
-     * Sets a collection of ChildSubRace objects related by a one-to-many relationship
-     * to the current object.
-     * It will also schedule objects for deletion based on a diff between old objects (aka persisted)
-     * and new objects from the given Propel collection.
-     *
-     * @param      Collection $subRaces A Propel collection.
-     * @param      ConnectionInterface $con Optional connection object
-     * @return $this|ChildRace The current object (for fluent API support)
-     */
-    public function setSubRaces(Collection $subRaces, ConnectionInterface $con = null)
-    {
-        /** @var ChildSubRace[] $subRacesToDelete */
-        $subRacesToDelete = $this->getSubRaces(new Criteria(), $con)->diff($subRaces);
-
-
-        $this->subRacesScheduledForDeletion = $subRacesToDelete;
-
-        foreach ($subRacesToDelete as $subRaceRemoved) {
-            $subRaceRemoved->setRace(null);
-        }
-
-        $this->collSubRaces = null;
-        foreach ($subRaces as $subRace) {
-            $this->addSubRace($subRace);
-        }
-
-        $this->collSubRaces = $subRaces;
-        $this->collSubRacesPartial = false;
-
-        return $this;
-    }
-
-    /**
-     * Returns the number of related SubRace objects.
-     *
-     * @param      Criteria $criteria
-     * @param      boolean $distinct
-     * @param      ConnectionInterface $con
-     * @return int             Count of related SubRace objects.
-     * @throws PropelException
-     */
-    public function countSubRaces(Criteria $criteria = null, $distinct = false, ConnectionInterface $con = null)
-    {
-        $partial = $this->collSubRacesPartial && !$this->isNew();
-        if (null === $this->collSubRaces || null !== $criteria || $partial) {
-            if ($this->isNew() && null === $this->collSubRaces) {
-                return 0;
-            }
-
-            if ($partial && !$criteria) {
-                return count($this->getSubRaces());
-            }
-
-            $query = ChildSubRaceQuery::create(null, $criteria);
-            if ($distinct) {
-                $query->distinct();
-            }
-
-            return $query
-                ->filterByRace($this)
-                ->count($con);
-        }
-
-        return count($this->collSubRaces);
-    }
-
-    /**
-     * Method called to associate a ChildSubRace object to this object
-     * through the ChildSubRace foreign key attribute.
-     *
-     * @param  ChildSubRace $l ChildSubRace
-     * @return $this|\App\Models\Race The current object (for fluent API support)
-     */
-    public function addSubRace(ChildSubRace $l)
-    {
-        if ($this->collSubRaces === null) {
-            $this->initSubRaces();
-            $this->collSubRacesPartial = true;
-        }
-
-        if (!$this->collSubRaces->contains($l)) {
-            $this->doAddSubRace($l);
-
-            if ($this->subRacesScheduledForDeletion and $this->subRacesScheduledForDeletion->contains($l)) {
-                $this->subRacesScheduledForDeletion->remove($this->subRacesScheduledForDeletion->search($l));
-            }
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param ChildSubRace $subRace The ChildSubRace object to add.
-     */
-    protected function doAddSubRace(ChildSubRace $subRace)
-    {
-        $this->collSubRaces[]= $subRace;
-        $subRace->setRace($this);
-    }
-
-    /**
-     * @param  ChildSubRace $subRace The ChildSubRace object to remove.
-     * @return $this|ChildRace The current object (for fluent API support)
-     */
-    public function removeSubRace(ChildSubRace $subRace)
-    {
-        if ($this->getSubRaces()->contains($subRace)) {
-            $pos = $this->collSubRaces->search($subRace);
-            $this->collSubRaces->remove($pos);
-            if (null === $this->subRacesScheduledForDeletion) {
-                $this->subRacesScheduledForDeletion = clone $this->collSubRaces;
-                $this->subRacesScheduledForDeletion->clear();
-            }
-            $this->subRacesScheduledForDeletion[]= $subRace;
-            $subRace->setRace(null);
-        }
-
-        return $this;
+        return $this->aRace;
     }
 
     /**
@@ -1574,7 +1136,11 @@ abstract class Race implements ActiveRecordInterface
      */
     public function clear()
     {
+        if (null !== $this->aRace) {
+            $this->aRace->removeSubRace($this);
+        }
         $this->id = null;
+        $this->race_id = null;
         $this->name = null;
         $this->alreadyInSave = false;
         $this->clearAllReferences();
@@ -1594,20 +1160,9 @@ abstract class Race implements ActiveRecordInterface
     public function clearAllReferences($deep = false)
     {
         if ($deep) {
-            if ($this->collGenders) {
-                foreach ($this->collGenders as $o) {
-                    $o->clearAllReferences($deep);
-                }
-            }
-            if ($this->collSubRaces) {
-                foreach ($this->collSubRaces as $o) {
-                    $o->clearAllReferences($deep);
-                }
-            }
         } // if ($deep)
 
-        $this->collGenders = null;
-        $this->collSubRaces = null;
+        $this->aRace = null;
     }
 
     /**
@@ -1617,7 +1172,7 @@ abstract class Race implements ActiveRecordInterface
      */
     public function __toString()
     {
-        return (string) $this->exportTo(RaceTableMap::DEFAULT_STRING_FORMAT);
+        return (string) $this->exportTo(SubRaceTableMap::DEFAULT_STRING_FORMAT);
     }
 
     /**

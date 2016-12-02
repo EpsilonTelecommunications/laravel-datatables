@@ -11,6 +11,7 @@ class JoinColumn extends BaseColumn
     const INNER_JOIN = 'INNER';
 
     protected $joins = [];
+    protected $joinName;
 
     public function __construct($columnDefinition = null, $settings = [])
     {

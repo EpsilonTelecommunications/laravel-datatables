@@ -4,6 +4,11 @@ class GroupedJoinColumn extends JoinColumn
 {
     protected $separator = ',';
 
+    public static function create($columnDefinition = null, $settings = [])
+    {
+        return new GroupedJoinColumn($columnDefinition, $settings);
+    }
+
     public function getSeparator()
     {
         return $this->separator;
@@ -14,6 +19,4 @@ class GroupedJoinColumn extends JoinColumn
         $this->separator = $separator;
         return $this;
     }
-
-
 }

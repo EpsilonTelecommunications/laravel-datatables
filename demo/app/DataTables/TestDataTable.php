@@ -22,8 +22,8 @@ class TestDataTable extends DataTableConfig
 
     function setUpColumns()
     {
-        $this->addColumn(Column::create('Id'));
         $this->addColumn(Column::create('Name'));
+        $this->addColumn(Column::create('Id'));
 
         $this->addColumn(JoinColumn::create([
             [
@@ -31,13 +31,18 @@ class TestDataTable extends DataTableConfig
                 'JoinType' => JoinColumn::LEFT_JOIN,
             ], 'Name']));
 
+        $this->addColumn(
+            GroupedJoinColumn::create(['Child', 'Name'])
+                ->setSeparator('-')
+        );
 
+//        $this->addColumn(
+//            JoinColumn::create(['Child', 'Name'])
+//        );
 
-//        $this->addColumn(GroupedJoinColumn::create(['Child', 'Name']));
-//
-//        $this->addColumn(JoinColumn::create(['Gender', 'Race', 'Name']));
-//
-//        $this->addColumn(JoinColumn::create(['Gender', 'Something', 'Name']));
+        $this->addColumn(JoinColumn::create(['Gender', 'Race', 'Name']));
+
+        $this->addColumn(JoinColumn::create(['Gender', 'Something', 'Name']));
 
         $this->addColumn(Column::create('DateOfBirth'));
     }

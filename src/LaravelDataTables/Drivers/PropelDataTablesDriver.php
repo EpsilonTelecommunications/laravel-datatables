@@ -53,10 +53,18 @@ class PropelDataTablesDriver
                             $column,
                             [
                                 'postEachQueryUp' => function($query, $relation) use ($column, &$joinModel, &$rowOutput) {
-                                    $getFunction = sprintf('get%s', ($relation->getType() == RelationMap::MANY_TO_MANY) ? $relation->getPluralName() : $relation->getName());
+
+                                    if ($relation->getType() == RelationMap::MANY_TO_MANY || $relation->getType() == RelationMap::ONE_TO_MANY) {
+                                        $getterName = $relation->getPluralName();
+                                    } else {
+                                        $getterName = $relation->getName();
+                                    }
+
+                                    $getFunction = sprintf('get%s', $getterName);
                                     if (method_exists($joinModel, $getFunction)) {
                                         $joinModel = $joinModel->$getFunction();
                                     } else {
+
                                         $rowOutput[$column->getName()] = '';
                                     }
                                 },
@@ -137,9 +145,6 @@ class PropelDataTablesDriver
                     $this->traverseQuery(
                         $column,
                         [
-                            'preEachQueryUp' => function (&$query, $relation, $joinSettings) {
-                                $query->join($relation->getName(), JoinColumn::getPropelJoinFromJoinType($joinSettings['JoinType']));
-                            },
                             'afterAll' => function (&$query) {
                                 $query->groupBy('Id');
                             }
@@ -269,8 +274,12 @@ class PropelDataTablesDriver
             $callbacks['beforeAll']($query);
         }
 
+        $t = 0;
+        if ($join->getJoinName() == 'Gender.Race.SubRace') {
+            // $t = 1;
+        }
         $count = 0;
-        foreach ($joinSettings as $joinSetting) {
+        foreach ($joinSettings as $key => $joinSetting) {
             if ($query->getTableMap()->hasRelation($joinSetting['Name'])) {
                 $relation = $query->getTableMap()->getRelation($joinSetting['Name']);
                 $queryName = false;
@@ -285,41 +294,52 @@ class PropelDataTablesDriver
                                         $callbacks['preEachQueryUp']($query, $relation, $joinSetting, $join);
                                     }
                                     $useFunction = sprintf('use%sQuery', $relation->getName());
-                                    $query = $query->$useFunction(null, JoinColumn::getPropelJoinFromJoinType($joinSetting['JoinType']));
+                                    $query = $query->$useFunction($relation->getName() . $key, JoinColumn::getPropelJoinFromJoinType($joinSetting['JoinType']));
+
                                     if ($this->itemIsCallable($callbacks, 'postEachQueryUp')) {
                                         $callbacks['postEachQueryUp']($query, $relation, $joinSetting, $join);
                                     }
                                 } catch(Exception $e) {
+                                    if ($t) {
+                                        throw $e;
+                                    }
                                     break 2;
                                 }
                                 $queryName = $foreignTable->getPhpName();
                             }
                         }
                     }
-                } elseif ($relation->getType() == RelationMap::MANY_TO_ONE) {
+                } else {
                     $queryName = $relation->getName();
                 }
             } else {
                 $queryName = '';
             }
 
-            $useFunction = sprintf('use%sQuery', $queryName);
             try {
                 if ($this->itemIsCallable($callbacks, 'preEachQueryUp')) {
                     $callbacks['preEachQueryUp']($query, $relation, $joinSetting, $join);
                 }
-                $query = $query->$useFunction(null, JoinColumn::getPropelJoinFromJoinType($joinSetting['JoinType']));
+                $useFunction = sprintf('use%sQuery', $queryName);
+                $query = $query->$useFunction($queryName . $key, JoinColumn::getPropelJoinFromJoinType($joinSetting['JoinType']));
                 $count++;
                 if ($this->itemIsCallable($callbacks, 'postEachQueryUp')) {
                     $callbacks['postEachQueryUp']($query, $relation, $joinSetting, $join);
                 }
             } catch (Exception $e) {
+                if ($t) {
+                    throw $e;
+                }
                 break;
             }
         }
 
-        if ($this->itemIsCallable($callbacks, 'topJoin')) {
-            $callbacks['topJoin']($query, $join);
+        try {
+            if ($this->itemIsCallable($callbacks, 'topJoin')) {
+                $callbacks['topJoin']($query, $join);
+            }
+        } catch (Exception $e) {
+
         }
 
         $joinsToReverse = array_slice($join->getJoinSettings(), 0, $count);

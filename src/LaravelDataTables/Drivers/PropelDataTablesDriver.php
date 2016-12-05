@@ -25,6 +25,7 @@ class PropelDataTablesDriver
     {
         $this->config = $config;
         $this->query = clone $config->getQuery();
+        $this->originalQuery = clone $this->query;
     }
 
     public function makeResponse()
@@ -87,16 +88,20 @@ class PropelDataTablesDriver
 
     private function runQuery()
     {
-        $this->doJoins();
+        //$this->doJoins();
 
-        $this->doOrderBy();
 
         $recordsTotal = $this->query->count();
 
+        $this->query = clone $this->originalQuery;
         $this->doFilter();
 
         $recordsFiltered = $this->query->count();
 
+        $this->query = clone $this->originalQuery;
+
+        $this->doFilter();
+        $this->doOrderBy();
         $this->doLimit();
 
         return [
@@ -153,14 +158,14 @@ class PropelDataTablesDriver
         $searches = $this->request->get('search', []);
 
         if (isset($searches['value']) && strlen($searches['value'])) {
-            foreach ($this->config->getColumns() as $columnConfig) {
+            foreach ($this->config->getColumns() as $k => $columnConfig) {
                 if ($columnConfig->getSearchable()) {
                     $query = $this->query;
                     if ($columnConfig instanceof JoinColumn) {
                         foreach ($columnConfig->getJoinSettings() as $key => $settings) {
                             // $query->join($settings['Name'], $settings['JoinType']);
                             $useQueryFunction = sprintf('use%sQuery', $settings['Name']);
-                            $query = $query->$useQueryFunction($settings['Name'].$key);
+                            $query = $query->$useQueryFunction($settings['Name'].$k.$key);
                         }
 
                         if (!$this->isNeverSearchable($query, $columnConfig)) {
@@ -173,7 +178,7 @@ class PropelDataTablesDriver
                     } else {
                         $column = $this->query->getTableMap()->getPhpName() . '.' . $columnConfig->getColumnName();
                         if (!$this->isNeverSearchable($this->query, $columnConfig)) {
-                        $this->query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
+                            $this->query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
                         }
                     }
                 }

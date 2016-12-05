@@ -108,13 +108,13 @@ class PropelDataTablesDriver
 
     private function doJoins()
     {
-        foreach ($this->config->getColumns() as $column) {
+        foreach ($this->config->getColumns() as $key => $column) {
             if ($column instanceof JoinColumn) {
                 $query = $this->query;
                 foreach ($column->getJoinSettings() as $settings) {
-                    $query->join($settings['Name'], $settings['JoinType']);
+                    // $query->join($settings['Name'], $settings['JoinType']);
                     $useQueryFunction = sprintf('use%sQuery', $settings['Name']);
-                    $query = $query->$useQueryFunction();
+                    $query = $query->$useQueryFunction($settings['Name'].$key);
                 }
             }
         }
@@ -129,9 +129,9 @@ class PropelDataTablesDriver
                 $columnConfig = $this->config->getColumnByIndex($order['column']);
                 if ($columnConfig instanceof JoinColumn) {
                     $column = implode('.', [$columnConfig->getJoinName(), $columnConfig->getColumnName()]);
-                    foreach (explode('.', $columnConfig->getJoinName()) as $part) {
-                        $useQuery = sprintf('use%sQuery', $part);
-                        $query = $query->$useQuery();
+                    foreach (explode('.', $columnConfig->getJoinName()) as $key => $part) {
+                        $useQueryFunction = sprintf('use%sQuery', $part);
+                        $query = $query->$useQueryFunction($part.$key);
                     }
                     $query->orderBy($columnConfig->getColumnName(), $order['dir']);
                     foreach (explode('.', $columnConfig->getJoinName()) as $part) {
@@ -157,10 +157,10 @@ class PropelDataTablesDriver
                 if ($columnConfig->getSearchable()) {
                     $query = $this->query;
                     if ($columnConfig instanceof JoinColumn) {
-                        foreach ($columnConfig->getJoinSettings() as $settings) {
-                            $query->join($settings['Name'], $settings['JoinType']);
+                        foreach ($columnConfig->getJoinSettings() as $key => $settings) {
+                            // $query->join($settings['Name'], $settings['JoinType']);
                             $useQueryFunction = sprintf('use%sQuery', $settings['Name']);
-                            $query = $query->_or()->$useQueryFunction();
+                            $query = $query->$useQueryFunction($settings['Name'].$key);
                         }
 
                         if (!$this->isNeverSearchable($query, $columnConfig)) {

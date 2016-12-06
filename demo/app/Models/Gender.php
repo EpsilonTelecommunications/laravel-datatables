@@ -18,6 +18,11 @@ class Gender extends BaseGender
 {
     public function getSomething()
     {
+        return 'Stuff';
+    }
+
+    public function getSomethingElse()
+    {
         return ChildQuery::create()->findOne();
     }
 }

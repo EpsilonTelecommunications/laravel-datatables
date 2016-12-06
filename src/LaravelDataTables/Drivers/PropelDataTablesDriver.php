@@ -12,10 +12,13 @@ use SevenD\LaravelDataTables\Columns\JoinColumn;
 use Illuminate\Http\Request;
 use Propel\Runtime\ActiveQuery\Join;
 use Exception;
+use Log;
+use Config;
 
 class PropelDataTablesDriver
 {
     private $query;
+    private $originalQuery;
     private $request;
     private $config;
 
@@ -28,14 +31,23 @@ class PropelDataTablesDriver
     {
         $this->config = $config;
         $this->query = clone $config->getQuery();
+        $this->originalQuery = clone $config->getQuery();
+    }
+
+    public function resetQuery()
+    {
+        $this->query = clone $this->originalQuery;
     }
 
     public function makeResponse()
     {
         $results = $this->runQuery();
+        $this->resetQuery();
+
         $className = false;
 
         $output = [];
+
         foreach ($results['data'] as $row) {
             $rowOutput = [];
 
@@ -43,9 +55,11 @@ class PropelDataTablesDriver
                 $className = $this->getClassName($row);
             }
 
-            try {
-                $rowOutput[$className . 'Object'] = $row;
-                foreach ($this->config->getColumns() as $column) {
+            $rowOutput[$className . 'Object'] = $row;
+            foreach ($this->config->getColumns() as $column) {
+
+                try {
+
                     if ($column instanceof JoinColumn) {
                         $joinModel = $row;
 
@@ -91,16 +105,27 @@ class PropelDataTablesDriver
                         );
                     } else {
                         $getFunction = sprintf('get%s', $column->getColumnName());
-                        if (is_callable([$row, $getFunction])) {
+                        if ($getFunction == 'getDateOfBirth') {
+                        }
+                        if (method_exists($row, $getFunction)) {
                             $rowOutput[$column->getName()] = $row->$getFunction();
+                        } else {
+                            $rowOutput[$column->getName()] = '';
                         }
                     }
+
+                } catch (Exception $e) {
+                    $this->handleException($e);
+                    $rowOutput[$column->getName()] = '';
+                } finally {
+                    if (!isset($rowOutput[$column->getName()])) {
+                        $rowOutput[$column->getName()] = '';
+                    }
+                    $this->resetQuery();
                 }
-                $output[] = $rowOutput;
-            } catch (Exception $e) {
-                // Mute
-                // throw $e;
             }
+            $output[] = $rowOutput;
+
         }
 
         return [
@@ -119,16 +144,16 @@ class PropelDataTablesDriver
     private function runQuery()
     {
         $this->doJoins();
-
-        $this->doOrderBy();
-
-        $recordsTotal = $this->query->count();
+        $recordsTotal = $this->query->select('Id')->count();
+        $this->resetQuery();
 
         $this->doFilter();
-
         $recordsFiltered = $this->query->count();
+        $this->resetQuery();
 
+        $this->doFilter();
         $this->doLimit();
+        $this->query->groupBy('Id');
 
         return [
             'data' => $this->query->find(),
@@ -153,74 +178,67 @@ class PropelDataTablesDriver
                 }
             }
         } catch (Exception $e) {
-            throw $e;
-        }
-    }
-
-    private function doOrderBy()
-    {
-        $orders = $this->request->get('order', []);
-
-        foreach ($orders as $order) {
-            $columnConfig = $this->config->getColumnByIndex($order['column']);
-            if ($columnConfig instanceof JoinColumn) {
-                $column = implode('.', [$columnConfig->getJoinName(), $columnConfig->getColumnName()]);
-            } else {
-                $column = $this->query->getTableMap()->getPhpName() . '.' . $columnConfig->getColumnName();
-            }
-
-            $this->query->orderBy($column, $order['dir']);
+            $this->handleException($e);
         }
     }
 
     public function doFilter()
     {
         $searches = $this->request->get('search', []);
+        $orders = $this->request->get('order', ['column' => 0, 'dir' => 'asc']);
 
-        if (isset($searches['value']) && strlen($searches['value'])) {
-            $query = $this->query;
-            $query->_or();
-            foreach ($this->config->getColumns() as $columnConfig) {
-                if ($columnConfig->getSearchable()) {
-                    $query->_or();
-                    if ($columnConfig instanceof JoinColumn) {
-                        $query = $this->traverseQuery(
-                            $columnConfig,
-                            [
-                                'beforeAll' => function (&$query) {
-                                    $query->_or();
-                                },
-                                'preEachQueryUp' => function (&$query) {
-                                    $query->_or();
-                                },
-                                'postEachQueryUp' => function (&$query) {
-                                    $query->_or();
-                                },
-                                'preEachQueryDown' => function (&$query) {
-                                    $query->_or();
-                                },
-                                'postEachQueryDown' => function (&$query) {
-                                    $query->_or();
-                                },
-                                'topJoin' => function (&$query, &$join) use ($searches) {
+        $query = $this->query;
+        $query->_or();
+        foreach ($this->config->getColumns() as $columnConfig) {
+            if ($columnConfig->getSearchable()) {
+                $query->_or();
+                if ($columnConfig instanceof JoinColumn) {
+                    $query = $this->traverseQuery(
+                        $columnConfig,
+                        [
+                            'beforeAll' => function (&$query) {
+                                $query->_or();
+                            },
+                            'preEachQueryUp' => function (&$query) {
+                                $query->_or();
+                            },
+                            'postEachQueryUp' => function (&$query) {
+                                $query->_or();
+                            },
+                            'preEachQueryDown' => function (&$query) {
+                                $query->_or();
+                            },
+                            'postEachQueryDown' => function (&$query) {
+                                $query->_or();
+                            },
+                            'topJoin' => function (&$query, &$join, $relation) use ($searches, $orders) {
+                                if (isset($searches['value']) && strlen($searches['value'])) {
                                     $query->_or()->filterBy($join->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
-                                },
-                                'afterAll' => function (&$query) {
-                                    $query->_or();
                                 }
-                            ]
-                        );
-                    } else {
-                        if (!$this->isNeverSearchable($query, $columnConfig)) {
-                            $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
-                            $query->_or()->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
-                        }
+                                if (!in_array($relation->getType(), [ RelationMap::MANY_TO_MANY, RelationMap::ONE_TO_MANY ])) {
+                                    foreach ($orders as $order) {
+                                        if (isset($order['column']) && $this->config->getIndexForColumn($join) == $order['column']) {
+                                            $query->orderBy($join->getColumnName(), $order['dir']);
+                                        }
+                                    }
+                                }
+                            },
+                            'afterAll' => function (&$query) {
+                                $query->_or();
+                            }
+                        ]
+                    );
+                } else {
+                    if (!$this->isNeverSearchable($query, $columnConfig)) {
+                        $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
+                        $query->_or()->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
                     }
                 }
-                $query->_or();
-                $this->query = $query;
             }
+            $query->_or();
+            $this->query = $query;
         }
+
         $this->query->_or();
     }
 
@@ -265,6 +283,7 @@ class PropelDataTablesDriver
 
     public function traverseQuery(JoinColumn $join, $callbacks = [])
     {
+        $index = $this->config->getIndexForColumn($join);
         $query = $this->query;
 
         $joinSettings = $join->getJoinSettings();
@@ -274,10 +293,6 @@ class PropelDataTablesDriver
             $callbacks['beforeAll']($query);
         }
 
-        $t = 0;
-        if ($join->getJoinName() == 'Gender.Race.SubRace') {
-            // $t = 1;
-        }
         $count = 0;
         foreach ($joinSettings as $key => $joinSetting) {
             if ($query->getTableMap()->hasRelation($joinSetting['Name'])) {
@@ -294,16 +309,12 @@ class PropelDataTablesDriver
                                         $callbacks['preEachQueryUp']($query, $relation, $joinSetting, $join);
                                     }
                                     $useFunction = sprintf('use%sQuery', $relation->getName());
-                                    $query = $query->$useFunction($relation->getName() . $key, JoinColumn::getPropelJoinFromJoinType($joinSetting['JoinType']));
-
+                                    $query = $query->$useFunction($relation->getName() . $index . '_' . $key, JoinColumn::getPropelJoinFromJoinType($joinSetting['JoinType']));
                                     if ($this->itemIsCallable($callbacks, 'postEachQueryUp')) {
                                         $callbacks['postEachQueryUp']($query, $relation, $joinSetting, $join);
                                     }
                                 } catch(Exception $e) {
-                                    if ($t) {
-                                        throw $e;
-                                    }
-                                    break 2;
+                                    $this->handleException($e);
                                 }
                                 $queryName = $foreignTable->getPhpName();
                             }
@@ -312,42 +323,38 @@ class PropelDataTablesDriver
                 } else {
                     $queryName = $relation->getName();
                 }
-            } else {
-                $queryName = '';
-            }
 
-            try {
-                if ($this->itemIsCallable($callbacks, 'preEachQueryUp')) {
-                    $callbacks['preEachQueryUp']($query, $relation, $joinSetting, $join);
+                try {
+                    if ($this->itemIsCallable($callbacks, 'preEachQueryUp')) {
+                        $callbacks['preEachQueryUp']($query, $relation, $joinSetting, $join);
+                    }
+                    $useFunction = sprintf('use%sQuery', $queryName);
+                    $query = $query->$useFunction($queryName  .$index . '_' . $key, JoinColumn::getPropelJoinFromJoinType($joinSetting['JoinType']));
+                    $count++;
+                    if ($this->itemIsCallable($callbacks, 'postEachQueryUp')) {
+                        $callbacks['postEachQueryUp']($query, $relation, $joinSetting, $join);
+                    }
+                } catch (Exception $e) {
+                    $this->handleException($e);
+                    break;
                 }
-                $useFunction = sprintf('use%sQuery', $queryName);
-                $query = $query->$useFunction($queryName . $key, JoinColumn::getPropelJoinFromJoinType($joinSetting['JoinType']));
-                $count++;
-                if ($this->itemIsCallable($callbacks, 'postEachQueryUp')) {
-                    $callbacks['postEachQueryUp']($query, $relation, $joinSetting, $join);
-                }
-            } catch (Exception $e) {
-                if ($t) {
-                    throw $e;
-                }
-                break;
             }
         }
 
         try {
-            if ($this->itemIsCallable($callbacks, 'topJoin')) {
-                $callbacks['topJoin']($query, $join);
+            $joinsToReverse = $join->getJoinSettings();
+            if (count($joinsToReverse) == $count) {
+                if ($this->itemIsCallable($callbacks, 'topJoin')) {
+                    $callbacks['topJoin']($query, $join, $relation);
+                }
             }
         } catch (Exception $e) {
-
+            $this->handleException($e);
         }
 
-        $joinsToReverse = array_slice($join->getJoinSettings(), 0, $count);
-
+        $joinsToReverse = array_slice($joinsToReverse, 0, $count);
         foreach (array_reverse($joinsToReverse) as $joinSetting) {
-
             try {
-
                 if ($relation->getType() == RelationMap::MANY_TO_MANY) {
                     if ($this->itemIsCallable($callbacks, 'preEachQueryDown')) {
                         $callbacks['preEachQueryDown']($query, $joinSetting, $join);
@@ -365,11 +372,10 @@ class PropelDataTablesDriver
                 if ($this->itemIsCallable($callbacks, 'postEachQueryDown')) {
                     $callbacks['postEachQueryDown']($query, $joinSetting, $join);
                 }
-
             } catch (Exception $e) {
+                $this->handleException($e);
                 break;
             }
-
         }
 
         if ($this->itemIsCallable($callbacks, 'afterAll')) {
@@ -377,5 +383,15 @@ class PropelDataTablesDriver
         }
 
         return $query;
+    }
+
+    private function handleException(Exception $e)
+    {
+        if (Config::get('app.debug')) {
+            throw $e;
+        } else {
+            Log::error($e->getMessage());
+            Log::error($e->getTraceAsString());
+        }
     }
 }

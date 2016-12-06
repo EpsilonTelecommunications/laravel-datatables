@@ -17,7 +17,7 @@ class TestDataTable extends DataTableConfig
 
     function setUpQuery()
     {
-        $this->setQuery(AdultQuery::create()->useGenderQuery());
+        $this->setQuery(AdultQuery::create());
     }
 
     function setUpColumns()
@@ -47,7 +47,9 @@ class TestDataTable extends DataTableConfig
 
         $this->addColumn(JoinColumn::create(['Gender', 'Race', 'Name']));
 
-        $this->addColumn(JoinColumn::create(['Gender', 'Something', 'Name']));
+        $this->addColumn(JoinColumn::create(['Gender', 'Something']));
+
+        $this->addColumn(JoinColumn::create(['Gender', 'SomethingElse', 'Name']));
 
         $this->addColumn(Column::create('DateOfBirth'));
     }

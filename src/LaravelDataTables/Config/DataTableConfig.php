@@ -84,6 +84,16 @@ abstract class DataTableConfig
         return null;
     }
 
+    public function getIndexForColumn(BaseColumn $column)
+    {
+        foreach ($this->getColumnWithIndex() as $key => $col) {
+            if ($column == $col) {
+                return $key;
+            }
+        }
+        return null;
+    }
+
     public function sortBy($columns)
     {
         $sorting = [];

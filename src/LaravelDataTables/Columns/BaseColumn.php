@@ -153,7 +153,7 @@ abstract class BaseColumn
     public function getSearchable()
     {
         $searchable = $this->getColumnAttribute('searchable');
-        return (is_null($searchable)) ? true : false;
+        return (is_null($searchable) || $searchable) ? true : false;
     }
 
     public function setSearchable($value)

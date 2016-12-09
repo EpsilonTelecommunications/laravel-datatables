@@ -14,7 +14,13 @@ class ServiceProvider extends LaravelServiceProvider
      */
     public function boot()
     {
-        //
+         Response::macro('dataTable', function ($configuration) {
+            $dataTable = new DataTables;
+            $dataTable->setRequest(Request::duplicate())
+                ->setConfig($configuration);
+
+            return Response::json($dataTable->makeResponse());
+        });
     }
 
     /**
@@ -24,12 +30,6 @@ class ServiceProvider extends LaravelServiceProvider
      */
     public function register()
     {
-        Response::macro('dataTable', function ($configuration) {
-            $dataTable = new DataTables;
-            $dataTable->setRequest(Request::duplicate())
-                ->setConfig($configuration);
 
-            return Response::json($dataTable->makeResponse());
-        });
     }
 }

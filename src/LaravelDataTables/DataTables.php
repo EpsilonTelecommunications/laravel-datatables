@@ -57,22 +57,11 @@ class DataTables
         foreach ($response['data'] as $key => $data) {
             foreach ($this->config->getColumns() as $subkey => $column) {
                 if ($column->getRender() instanceof ColumnRender) {
-                    if ($column instanceof GroupedJoinColumn) {
-                        // Goodness only knows if this will work
-
-                    } else {
-                        $response['data'][$key][$subkey] = View::make($column->getRender()->getRender())->with($data)->render();
-                    }
-                } else {
-                    if ($column instanceof GroupedJoinColumn) {
-
-                    } else {
-                        $response['data'][$key] = $data;
-                    }
+                    $response['data'][$key][$subkey] = View::make($column->getRender()->getRender())->with($data)->render();
                 }
             }
-        }
 
+        }
         return $response;
     }
 

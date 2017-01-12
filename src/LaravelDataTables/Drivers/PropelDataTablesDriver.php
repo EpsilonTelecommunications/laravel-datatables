@@ -188,10 +188,10 @@ class PropelDataTablesDriver
         $orders = $this->request->get('order', ['column' => 0, 'dir' => 'asc']);
 
         $query = $this->query;
-        $query->_or();
+
         foreach ($this->config->getColumns() as $columnConfig) {
             if ($columnConfig->getSearchable()) {
-                $query->_or();
+
                 if ($columnConfig instanceof JoinColumn) {
                     $query = $this->traverseQuery(
                         $columnConfig,
@@ -213,7 +213,7 @@ class PropelDataTablesDriver
                             },
                             'topJoin' => function (&$query, &$join, $relation) use ($searches, $orders) {
                                 if (isset($searches['value']) && strlen($searches['value'])) {
-                                    $query->_or()->filterBy($join->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
+                                    $query->filterBy($join->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
                                 }
                                 if (!in_array($relation->getType(), [ RelationMap::MANY_TO_MANY, RelationMap::ONE_TO_MANY ])) {
                                     foreach ($orders as $order) {
@@ -231,7 +231,7 @@ class PropelDataTablesDriver
                 } else {
                     if (!$this->isNeverSearchable($query, $columnConfig)) {
                         $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
-                        $query->_or()->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
+                        $query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
                     }
                 }
             }

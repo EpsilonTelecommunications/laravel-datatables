@@ -197,19 +197,19 @@ class PropelDataTablesDriver
                         $columnConfig,
                         [
                             'beforeAll' => function (&$query) {
-                                $query->_or();
+                                // $query->_or();
                             },
                             'preEachQueryUp' => function (&$query) {
-                                $query->_or();
+                                // $query->_or();
                             },
                             'postEachQueryUp' => function (&$query) {
-                                $query->_or();
+                                 $query->_or();
                             },
                             'preEachQueryDown' => function (&$query) {
-                                $query->_or();
+//                                $query->_or();
                             },
                             'postEachQueryDown' => function (&$query) {
-                                $query->_or();
+                                 $query->_or();
                             },
                             'topJoin' => function (&$query, &$join, $relation) use ($searches, $orders) {
                                 if (isset($searches['value']) && strlen($searches['value'])) {
@@ -224,7 +224,7 @@ class PropelDataTablesDriver
                                 }
                             },
                             'afterAll' => function (&$query) {
-                                $query->_or();
+                                //$query->_or();
                             }
                         ]
                     );
@@ -235,7 +235,7 @@ class PropelDataTablesDriver
                     }
                 }
             }
-            $query->_or();
+            // $query->_or();
             $this->query = $query;
         }
 

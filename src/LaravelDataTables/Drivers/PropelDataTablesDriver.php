@@ -192,6 +192,7 @@ class PropelDataTablesDriver
         $query = $this->query;
 
         foreach ($this->config->getColumns() as $columnConfig) {
+
             if ($columnConfig->getSearchable()) {
 
                 if ($columnConfig instanceof JoinColumn) {
@@ -202,7 +203,7 @@ class PropelDataTablesDriver
 //                                $query->_or();
                             },
                             'preEachQueryUp' => function (&$query) {
-//                                $query->_or();
+                                $query->_or();
                             },
                             'postEachQueryUp' => function (&$query) {
 //                                $query->_or();
@@ -226,7 +227,7 @@ class PropelDataTablesDriver
                                 }
                             },
                             'afterAll' => function (&$query) {
-//                                $query->_or();
+                                $query->_or();
                             }
                         ]
                     );
@@ -325,7 +326,6 @@ class PropelDataTablesDriver
                 } else {
                     $queryName = $relation->getName();
                 }
-
                 try {
                     if ($this->itemIsCallable($callbacks, 'preEachQueryUp')) {
                         $callbacks['preEachQueryUp']($query, $relation, $joinSetting, $join);

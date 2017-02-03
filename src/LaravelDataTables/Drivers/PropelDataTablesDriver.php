@@ -192,52 +192,54 @@ class PropelDataTablesDriver
         $query = $this->query;
 
         foreach ($this->config->getColumns() as $columnConfig) {
-
-            if ($columnConfig->getSearchable()) {
-
-                if ($columnConfig instanceof JoinColumn) {
-                    $query = $this->traverseQuery(
-                        $columnConfig,
-                        [
-                            'beforeAll' => function (&$query) {
+            if ($columnConfig instanceof JoinColumn) {
+                $query = $this->traverseQuery(
+                    $columnConfig,
+                    [
+                        'beforeAll' => function (&$query) {
 //                                $query->_or();
-                            },
-                            'preEachQueryUp' => function (&$query) {
-                                $query->_or();
-                            },
-                            'postEachQueryUp' => function (&$query) {
+                        },
+                        'preEachQueryUp' => function (&$query) {
+                            $query->_or();
+                        },
+                        'postEachQueryUp' => function (&$query) {
 //                                $query->_or();
-                            },
-                            'preEachQueryDown' => function (&$query) {
+                        },
+                        'preEachQueryDown' => function (&$query) {
 //                                $query->_or();
-                            },
-                            'postEachQueryDown' => function (&$query) {
+                        },
+                        'postEachQueryDown' => function (&$query) {
 //                                $query->_or();
-                            },
-                            'topJoin' => function (&$query, &$join, $relation) use ($searches, $orders) {
-                                if (isset($searches['value']) && strlen($searches['value'])) {
-                                    $query->filterBy($join->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
-                                }
-                                if (!in_array($relation->getType(), [ RelationMap::MANY_TO_MANY, RelationMap::ONE_TO_MANY ])) {
-                                    foreach ($orders as $order) {
-                                        if (isset($order['column']) && $this->config->getIndexForColumn($join) == $order['column']) {
-                                            $query->orderBy($join->getColumnName(), $order['dir']);
-                                        }
+                        },
+                        'topJoin' => function (&$query, &$join, $relation) use ($searches, $orders) {
+                            if ($join->getSearchable() && !$this->isNeverSearchable($query, $join) && isset($searches['value']) && strlen($searches['value'])) {
+                                $query->filterBy($join->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
+                            }
+                            if (!in_array($relation->getType(), [ RelationMap::MANY_TO_MANY, RelationMap::ONE_TO_MANY ])) {
+                                foreach ($orders as $order) {
+                                    if (isset($order['column']) && $this->config->getIndexForColumn($join) == $order['column']) {
+                                        $query->orderBy($join->getColumnName(), $order['dir']);
                                     }
                                 }
-                            },
-                            'afterAll' => function (&$query) {
-                                $query->_or();
                             }
-                        ]
-                    );
-                } else {
-                    if (!$this->isNeverSearchable($query, $columnConfig)) {
-                        $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
-                        $query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
+                        },
+                        'afterAll' => function (&$query) {
+                            $query->_or();
+                        }
+                    ]
+                );
+            } else {
+                if ($columnConfig->getSearchable() && !$this->isNeverSearchable($query, $columnConfig)) {
+                    $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
+                    $query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
+                    foreach ($orders as $order) {
+                        if (isset($order['column']) && $this->config->getIndexForColumn($columnConfig) == $order['column']) {
+                            $query->orderBy($columnConfig->getColumnName(), $order['dir']);
+                        }
                     }
                 }
             }
+
 //            $query->_or();
             $this->query = $query;
         }
@@ -342,7 +344,7 @@ class PropelDataTablesDriver
                 }
             }
         }
-
+        
         try {
             $joinsToReverse = $join->getJoinSettings();
             if (count($joinsToReverse) == $count) {

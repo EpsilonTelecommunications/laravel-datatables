@@ -144,11 +144,11 @@ class PropelDataTablesDriver
     private function runQuery()
     {
         $this->doJoins();
-        $recordsTotal = $this->query->select('Id')->count();
+        $recordsTotal = $this->query->select('Id')->groupById()->count();
         $this->resetQuery();
 
         $this->doFilter();
-        $recordsFiltered = $this->query->count();
+        $recordsFiltered = $this->query->groupById()->count();
         $this->resetQuery();
 
         $this->doFilter();

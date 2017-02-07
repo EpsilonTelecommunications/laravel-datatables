@@ -215,12 +215,13 @@ class PropelDataTablesDriver
                             if ($join->getSearchable() && !$this->isNeverSearchable($query, $join) && isset($searches['value']) && strlen($searches['value'])) {
                                 $query->filterBy($join->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
                             }
-                            if (!in_array($relation->getType(), [ RelationMap::MANY_TO_MANY, RelationMap::ONE_TO_MANY ])) {
+                            if (!in_array($relation->getType(), [ RelationMap::MANY_TO_MANY, RelationMap::MANY_TO_ONE ])) {
                                 foreach ($orders as $order) {
                                     if (isset($order['column']) && $this->config->getIndexForColumn($join) == $order['column']) {
                                         $query->orderBy($join->getColumnName(), $order['dir']);
                                     }
                                 }
+
                             }
                         },
                         'afterAll' => function (&$query) {
@@ -232,10 +233,10 @@ class PropelDataTablesDriver
                 if ($columnConfig->getSearchable() && !$this->isNeverSearchable($query, $columnConfig)) {
                     $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
                     $query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
-                    foreach ($orders as $order) {
-                        if (isset($order['column']) && $this->config->getIndexForColumn($columnConfig) == $order['column']) {
-                            $query->orderBy($columnConfig->getColumnName(), $order['dir']);
-                        }
+                }
+                foreach ($orders as $order) {
+                    if (isset($order['column']) && $this->config->getIndexForColumn($columnConfig) == $order['column']) {
+                        $query->orderBy($columnConfig->getColumnName(), $order['dir']);
                     }
                 }
             }

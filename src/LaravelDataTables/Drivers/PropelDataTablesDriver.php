@@ -212,7 +212,7 @@ class PropelDataTablesDriver
 //                                $query->_or();
                         },
                         'topJoin' => function (&$query, &$join, $relation) use ($searches, $orders) {
-                            if ($join->getSearchable() && !$this->isNeverSearchable($query, $join) && isset($searches['value']) && strlen($searches['value'])) {
+                            if (isset($searches['value']) && strlen($searches['value']) && $join->getSearchable() && !$this->isNeverSearchable($query, $join)) {
                                 $query->filterBy($join->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
                             }
                             if (!in_array($relation->getType(), [ RelationMap::MANY_TO_MANY, RelationMap::ONE_TO_MANY ])) {
@@ -230,7 +230,7 @@ class PropelDataTablesDriver
                     ]
                 );
             } else {
-                if ($columnConfig->getSearchable() && !$this->isNeverSearchable($query, $columnConfig)) {
+                if (isset($searches['value']) && strlen($searches['value']) && $columnConfig->getSearchable() && !$this->isNeverSearchable($query, $columnConfig)) {
                     $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
                     $query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
                 }

@@ -215,7 +215,7 @@ class PropelDataTablesDriver
                             if (isset($searches['value']) && strlen($searches['value']) && $join->getSearchable() && !$this->isNeverSearchable($query, $join)) {
                                 $query->filterBy($join->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
                             }
-                            if (!in_array($relation->getType(), [ RelationMap::MANY_TO_MANY, RelationMap::ONE_TO_MANY ])) {
+                            if (!in_array($relation->getType(), [ RelationMap::MANY_TO_MANY ])) {
                                 foreach ($orders as $order) {
                                     if (isset($order['column']) && $this->config->getIndexForColumn($join) == $order['column']) {
                                         $query->orderBy($join->getColumnName(), $order['dir']);

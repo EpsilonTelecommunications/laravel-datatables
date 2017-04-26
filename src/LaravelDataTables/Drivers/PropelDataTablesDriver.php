@@ -190,10 +190,10 @@ class PropelDataTablesDriver
         $orders = $this->request->get('order', ['column' => 0, 'dir' => 'asc']);
 
         $query = $this->query;
-//        $query->_or();
+		$query->filterById(0, Criteria::GREATER_THAN); // Hack to ensure all the following is OR'd as the query might have other filters applied.
         foreach ($this->config->getColumns() as $columnConfig) {
             if ($columnConfig->getSearchable()) {
-//                $query->_or();
+                $query->_or();
                 if ($columnConfig instanceof JoinColumn) {
                     $query = $this->traverseQuery(
                         $columnConfig,

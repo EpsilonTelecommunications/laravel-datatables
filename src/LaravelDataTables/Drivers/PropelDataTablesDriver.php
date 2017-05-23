@@ -231,8 +231,8 @@ class PropelDataTablesDriver
                         ]
                     );
                 } else {
+                    $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
                     if (!$this->isNeverSearchable($query, $columnConfig)) {
-                        $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
                         $query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
                     }
                     foreach ($orders as $order) {

@@ -234,11 +234,10 @@ class PropelDataTablesDriver
                     if (!$this->isNeverSearchable($query, $columnConfig)) {
                         $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
                         $query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
-
-                        foreach ($orders as $order) {
-                            if (isset($order['column']) && $this->config->getIndexForColumn($columnConfig) == $order['column']) {
-                                $query->orderBy($column, $order['dir']);
-                            }
+                    }
+                    foreach ($orders as $order) {
+                        if (isset($order['column']) && $this->config->getIndexForColumn($columnConfig) == $order['column']) {
+                            $query->orderBy($column, $order['dir']);
                         }
                     }
                 }

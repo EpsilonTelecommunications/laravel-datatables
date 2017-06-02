@@ -189,10 +189,10 @@ class PropelDataTablesDriver
         $orders = $this->request->get('order', ['column' => 0, 'dir' => 'asc']);
 
         $query = $this->query;
-		$query->filterById(0, Criteria::GREATER_THAN); // Hack to ensure all the following is OR'd as the query might have other filters applied.
+		//$query->filterById(0, Criteria::GREATER_THAN); // Hack to ensure all the following is OR'd as the query might have other filters applied. DID YOU EVEN TEST THIS!?!?!?!
         foreach ($this->config->getColumns() as $columnConfig) {
             if ($columnConfig->getSearchable()) {
-                $query->_or();
+               // $query->_or();
                 if ($columnConfig instanceof JoinColumn) {
                     $query = $this->traverseQuery(
                         $columnConfig,
@@ -230,9 +230,14 @@ class PropelDataTablesDriver
                         ]
                     );
                 } else {
+                    $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
                     if (!$this->isNeverSearchable($query, $columnConfig)) {
-                        $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
                         $query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
+                    }
+                    foreach ($orders as $order) {
+                        if (isset($order['column']) && $this->config->getIndexForColumn($columnConfig) == $order['column']) {
+                            $query->orderBy($column, $order['dir']);
+                        }
                     }
                 }
             }

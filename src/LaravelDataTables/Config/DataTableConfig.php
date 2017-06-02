@@ -65,7 +65,7 @@ abstract class DataTableConfig
     public function addColumn(BaseColumn $column, $type = null)
     {
         $columnType = $this->getColumnTypePropertyName($type);
-        $this->$columnType[$column->getName()] = $column;
+        $this->{$columnType}[$column->getName()] = $column;
 		return $this;
     }
 

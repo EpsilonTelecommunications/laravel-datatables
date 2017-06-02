@@ -8,7 +8,8 @@
         "php": ">=5.5.9",
         "laravel/framework": "5.2.*",
         "propel/propel-laravel": "dev-master",
-        "danielstjules/stringy": "~1.8"
+        "danielstjules/stringy": "~1.8",
+        "league/csv": "^8.2"
     },
     "require-dev": {
         "fzaninotto/faker": "~1.4",

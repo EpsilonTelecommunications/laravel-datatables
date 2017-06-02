@@ -22,6 +22,19 @@ class TestDataTable extends DataTableConfig
 
     function setUpColumns()
     {
+        // CSV
+
+        $this->setDefaultColumnType('csv');
+
+        $this->addColumn(Column::create('Name'));
+        $this->addColumn(Column::create('Id'));
+
+
+
+        // TABLE
+
+        $this->setDefaultColumnType('');
+
         $this->addColumn(Column::create('Name'));
         $this->addColumn(Column::create('Id'));
 

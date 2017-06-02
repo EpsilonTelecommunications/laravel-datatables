@@ -7,7 +7,9 @@ abstract class DataTableConfig
 {
     protected $query;
     protected $endpoint;
+    protected $defaultColumnType = '';
     protected $columns = [];
+    protected $columnsCsv = [];
     protected $sorting = [];
 
     public function __construct()
@@ -47,20 +49,35 @@ abstract class DataTableConfig
         return $this;
     }
 
-    public function addColumn(BaseColumn $column)
+    protected function getColumnTypePropertyName($type)
     {
-        $this->columns[$column->getName()] = $column;
+        if (is_null($type)) {
+            $type = $this->getDefaultColumnType();
+        }
+
+        $type = sprintf('columns%s', studly_case($type));
+        if (property_exists($this, $type)) {
+            return $type;
+        }
+        return 'columns';
+    }
+
+    public function addColumn(BaseColumn $column, $type = null)
+    {
+        $columnType = $this->getColumnTypePropertyName($type);
+        $this->$columnType[$column->getName()] = $column;
 		return $this;
     }
 
-    public function getColumns()
+    public function getColumns($type = null)
     {
-        return $this->columns;
+        $columnType = $this->getColumnTypePropertyName($type);
+        return $this->$columnType;
     }
 
-    public function getColumnWithIndex()
+    public function getColumnWithIndex($type = null)
     {
-        return array_values($this->columns);
+        return array_values($this->getColumns($type));
     }
 
     public function getColumn($name)
@@ -72,10 +89,10 @@ abstract class DataTableConfig
         return null;
     }
 
-    public function getColumnByIndex($index)
+    public function getColumnByIndex($index, $type = null)
     {
         $count = 0;
-        foreach ($this->getColumns() as $column) {
+        foreach ($this->getColumns($type) as $column) {
             if ($count == $index) {
                 return $column;
             }
@@ -84,9 +101,9 @@ abstract class DataTableConfig
         return null;
     }
 
-    public function getIndexForColumn(BaseColumn $column)
+    public function getIndexForColumn(BaseColumn $column, $type = null)
     {
-        foreach ($this->getColumnWithIndex() as $key => $col) {
+        foreach ($this->getColumnWithIndex($type) as $key => $col) {
             if ($column == $col) {
                 return $key;
             }
@@ -94,11 +111,11 @@ abstract class DataTableConfig
         return null;
     }
 
-    public function sortBy($columns)
+    public function sortBy($columns, $type = null)
     {
         $sorting = [];
         foreach ($columns as $sortColumn) {
-            foreach ($this->getColumnWithIndex() as $key => $column) {
+            foreach ($this->getColumnWithIndex($type) as $key => $column) {
                 if ($sortColumn[0]->getColumnName() == $column->getColumnName()) {
                     $sorting[] = [$key, $sortColumn[1]];
                 }
@@ -107,13 +124,13 @@ abstract class DataTableConfig
         $this->sorting = $sorting;
     }
 
-    public function getJson()
+    public function getJson($type = null)
     {
         $config = [];
 
         $config['endpoint'] = $this->endpoint;
 
-        $config['columns'] = $this->getColumnsJson();
+        $config['columns'] = $this->getColumnsJson($type);
 
         $config['order'] = $this->sorting;
 
@@ -145,11 +162,11 @@ abstract class DataTableConfig
         return $this->getHtml($id, true);
     }
 
-    private function getColumnsJson()
+    private function getColumnsJson($type = null)
     {
         $columns = [];
 
-        foreach ($this->getColumns() as $columnConfig) {
+        foreach ($this->getColumns($type) as $columnConfig) {
             $column = [];
             $column['data'] = $columnConfig->getName();
 
@@ -205,5 +222,23 @@ abstract class DataTableConfig
         }
 
         return $columns;
+    }
+
+    /**
+     * @return string
+     */
+    public function getDefaultColumnType()
+    {
+        return $this->defaultColumnType;
+    }
+
+    /**
+     * @param string $defaultColumnType
+     * @return DataTableConfig
+     */
+    public function setDefaultColumnType($defaultColumnType)
+    {
+        $this->defaultColumnType = $defaultColumnType;
+        return $this;
     }
 }

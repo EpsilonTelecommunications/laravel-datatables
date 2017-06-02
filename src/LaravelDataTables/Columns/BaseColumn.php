@@ -13,12 +13,12 @@ abstract class BaseColumn
         }
     }
 
-    public function getColumnAttribute($key)
+    public function getColumnAttribute($key, $default = null)
     {
         if (isset($this->columnAttributes[$key])) {
             return $this->columnAttributes[$key];
         } else {
-            return null;
+            return $default;
         }
     }
 
@@ -163,7 +163,7 @@ abstract class BaseColumn
     }
 
     public function getTitle() {
-        return $this->getColumnAttribute('title');
+        return $this->getColumnAttribute('title', $this->getName());
     }
 
     public function setTitle($value) {

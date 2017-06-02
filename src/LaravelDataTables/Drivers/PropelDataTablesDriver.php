@@ -54,7 +54,6 @@ class PropelDataTablesDriver
             if (!$className) {
                 $className = $this->getClassName($row);
             }
-
             $rowOutput[$className . 'Object'] = $row;
             foreach ($this->config->getColumns() as $column) {
 

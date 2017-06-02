@@ -9,6 +9,9 @@
     </head>
     <body>
         {!! $dataTable->getHtmlWithJson('dataTable1') !!}
+
+        <a onclick="$('#dataTable1').data('downloadCsv')();">Download CSV</a>
+
         <script>
 
             var app = {
@@ -26,15 +29,24 @@
                 var dataTable = $('#' + id);
                 var configuration = dataTable.data('datatableconfig');
 
+                dataTable.data('downloadCsv', function(callbackSuccess, callbackFailure) {
+                    if (dataTable.data('ajaxParams')) {
+                        var params = $.extend({}, dataTable.data('ajaxParams'), { csv: true });
+                        document.location.href = configuration.endpoint + '?' + $.param(params);
+                    }
+                });
+
                 var config = {
                     ajax: function (data, callback, settings) {
                         if (app.pageVariables.dataTablesAjaxProcessing[id] !== false) {
                             clearTimeout(app.pageVariables.dataTablesAjaxProcessing[id]);
                         }
                         app.pageVariables.dataTablesAjaxProcessing[id] = setTimeout(function() {
+                            var ajaxParams = $.extend({}, ($.isFunction(extraParams)) ? extraParams.call() : extraParams, data);
+                            dataTable.data('ajaxParams', ajaxParams);
                             $.ajax({
                                 url: configuration.endpoint,
-                                data: $.extend({}, ($.isFunction(extraParams)) ? extraParams.call() : extraParams, data),
+                                data: ajaxParams,
                                 method: 'GET',
                                 success: function(data) {
                                     callback(data);

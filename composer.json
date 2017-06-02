@@ -12,7 +12,8 @@
     "require": {
         "php": ">=5.5.9",
         "laravel/framework": "5.*",
-        "danielstjules/stringy": "*"
+        "danielstjules/stringy": "*",
+        "league/csv": "^8.2"
     },
     "autoload": {
         "psr-4": {

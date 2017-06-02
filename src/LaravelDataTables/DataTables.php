@@ -5,6 +5,8 @@ use SevenD\LaravelDataTables\Columns\GroupedJoinColumn;
 use SevenD\LaravelDataTables\Config\DataTableConfig;
 use SevenD\LaraveLDataTables\Exceptions\NoDriverFoundException;
 use Illuminate\Http\Request;
+use League\Csv\Writer;
+use SplTempFileObject;
 use View;
 
 class DataTables
@@ -48,14 +50,14 @@ class DataTables
         return $this;
     }
 
-    public function makeResponse()
+    public function makeResponse($type = '')
     {
         $this->loadDriver();
 
         $response = $this->driver->makeResponse();
 
         foreach ($response['data'] as $key => $data) {
-            foreach ($this->config->getColumns() as $subkey => $column) {
+            foreach ($this->config->getColumns($type) as $subkey => $column) {
                 if ($column->getRender() instanceof ColumnRender) {
                     $response['data'][$key][$subkey] = View::make($column->getRender()->getRender())->with($data)->render();
                 }
@@ -63,6 +65,50 @@ class DataTables
 
         }
         return $response;
+    }
+
+    public function makeResponseCsv()
+    {
+        $this->config->setDefaultColumnType('csv');
+        $this->loadDriver();
+
+        $response = $this->driver->makeResponse();
+
+
+        $columns = $this->config->getColumns();
+
+        if (is_null($columns) || count($columns) == 0) {
+            $columns = $this->config->getColumns('');
+        }
+
+        $writer = Writer::createFromFileObject(new SplTempFileObject());
+
+        foreach ($response['data'] as $key => $data) {
+            foreach ($columns as $subkey => $column) {
+                if ($column->getRender() instanceof ColumnRender) {
+                    $response['data'][$key][$subkey] = View::make($column->getRender()->getRender())->with($data)->render();
+                }
+            }
+        }
+
+        foreach ($response['data'] as $key => $row) {
+            foreach ($row as $subkey => $column) {
+                if (is_array($column)) {
+                    $response['data'][$key][$subkey] = implode(', ', $columns); // Not sure this is a good idea... but we'll see!
+                } elseif (is_object($column)) {
+                    unset($response['data'][$key][$subkey]);
+                }
+            }
+        }
+
+        $headers = [];
+        foreach ($columns as $column) {
+            $headers[] = $column->getTitle();
+        }
+
+        $writer->insertAll(array_merge([$headers], $response['data']));
+
+        return $writer->__toString();
     }
 
     private function loadDriver()

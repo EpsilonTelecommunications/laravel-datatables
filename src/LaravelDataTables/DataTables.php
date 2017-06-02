@@ -69,17 +69,17 @@ class DataTables
 
     public function makeResponseCsv()
     {
-        $this->config->setDefaultColumnType('csv');
         $this->loadDriver();
-
-        $response = $this->driver->makeResponse();
-
+        $this->config->setDefaultColumnType('csv');
 
         $columns = $this->config->getColumns();
 
         if (is_null($columns) || count($columns) == 0) {
-            $columns = $this->config->getColumns('');
+            $this->config->setDefaultColumnType('');
+            $columns = $this->config->getColumns();
         }
+
+        $response = $this->driver->makeResponse();
 
         $writer = Writer::createFromFileObject(new SplTempFileObject());
 

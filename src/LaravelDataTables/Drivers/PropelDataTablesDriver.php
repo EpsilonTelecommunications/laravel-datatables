@@ -41,8 +41,11 @@ class PropelDataTablesDriver
 
     public function makeResponse()
     {
+        $originalColumnType = $this->config->getDefaultColumnType();
+        $this->config->setDefaultColumnType('');
         $results = $this->runQuery();
         $this->resetQuery();
+        $this->config->setDefaultColumnType($originalColumnType);
 
         $className = false;
 

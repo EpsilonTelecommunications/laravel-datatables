@@ -62,8 +62,8 @@ class ServiceProvider extends LaravelServiceProvider
                     $date = Carbon::now();
                     $dateFormatted = $date->format('Y-m-d H:i:s');
 
-                    if ($dataTable->getCsvTitle()) {
-                        $csvName = sprintf('CSV Export - %s [%s].csv', $dataTable->getCsvTitle(), $dateFormatted);
+                    if ($dataTable->getConfig()->getCsvTitle()) {
+                        $csvName = sprintf('CSV Export - %s [%s].csv', $dataTable->getConfig()->getCsvTitle(), $dateFormatted);
                     } else {
                         $csvName = sprintf('CSV Export [%s].csv', $dateFormatted);
                     }

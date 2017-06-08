@@ -50,6 +50,11 @@ class DataTables
         return $this;
     }
 
+    public function getConfig()
+    {
+        return $this->config;
+    }
+
     public function makeResponse($type = '')
     {
         $this->loadDriver();

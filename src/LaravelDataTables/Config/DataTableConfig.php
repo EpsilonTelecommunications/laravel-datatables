@@ -11,6 +11,9 @@ abstract class DataTableConfig
     protected $columns = [];
     protected $columnsCsv = [];
     protected $sorting = [];
+    protected $title;
+    protected $csvTitle;
+
 
     public function __construct()
     {
@@ -24,6 +27,28 @@ abstract class DataTableConfig
     abstract function setUpQuery();
 
     abstract function setUpColumns();
+
+    public function getTitle()
+    {
+        return $this->title;
+    }
+
+    public function setTitle($title)
+    {
+        $this->title = $title;
+        return $this;
+    }
+
+    public function getCsvTitle()
+    {
+        return (is_null($this->csvTitle)) ? $this->csvTitle : $this->getTitle();
+    }
+
+    public function setCsvTitle($csvTitle)
+    {
+        $this->csvTitle = $csvTitle;
+        return $this;
+    }
 
     public function setEndpoint($endpoint)
     {

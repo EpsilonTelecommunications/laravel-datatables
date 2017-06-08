@@ -31,8 +31,18 @@
 
                 dataTable.data('downloadCsv', function(callbackSuccess, callbackFailure) {
                     if (dataTable.data('ajaxParams')) {
-                        var params = $.extend({}, dataTable.data('ajaxParams'), { csv: true });
-                        document.location.href = configuration.endpoint + '?' + $.param(params);
+                        dataTable.parents('.dataTables_wrapper').eq(0).find('.download-bar').find('.panel-menu').collapse('show');
+                        var params = $.extend({}, dataTable.data('ajaxParams'), { csv: 'prepare' });
+                        var url = configuration.endpoint + '?' + $.param(params);
+
+                        app.ajax.get(url, function(data) {
+                            document.location.href = data.url;
+                            dataTable.parents('.dataTables_wrapper').eq(0).find('.download-bar').find('.panel-menu').collapse('hide');
+                            // Show a success message?
+                        }, function() {
+                            dataTable.parents('.dataTables_wrapper').eq(0).find('.download-bar').find('.panel-menu').collapse('hide');
+                            // Also show an error message?
+                        });
                     }
                 });
 

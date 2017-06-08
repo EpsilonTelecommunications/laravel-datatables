@@ -1,12 +1,16 @@
 <?php namespace SevenD\LaravelDataTables\Providers;
 
-use SevenD\LaravelDataTables\DataTables;
 use Illuminate\Support\ServiceProvider as LaravelServiceProvider;
+use SevenD\LaravelDataTables\DataTables;
+use Carbon\Carbon;
 use Response;
 use Request;
+use Storage;
 
 class ServiceProvider extends LaravelServiceProvider
 {
+    const CSV_FILE_PATH = 'laravel-datatables/csv/%s.csv';
+
     /**
      * Bootstrap any application services.
      *
@@ -30,7 +34,7 @@ class ServiceProvider extends LaravelServiceProvider
             $dataTable->setConfig($configuration);
             $request = Request::duplicate();
 
-            if ($request->get('csv')) {
+            if ($request->get('csv') == 'prepare') {
                 $request->merge([
                     'start' => null,
                     'length' => null,
@@ -39,18 +43,35 @@ class ServiceProvider extends LaravelServiceProvider
                 $csv = $dataTable->setRequest($request)
                     ->makeResponseCsv();
 
-                $callback = function() use ($csv) {
-                    file_put_contents('php://output', $csv);
-                };
+                $hash = md5(microtime(true) . serialize($request->all()));
 
-                return response()->stream($callback, 200, [
-                    "Content-type" => "text/csv",
-                    "Content-Disposition" => sprintf("attachment; filename=data.csv"),
-                    "Pragma" => "no-cache",
-                    "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
-                    "Expires" => "0"
+                Storage::put(sprintf(ServiceProvider::CSV_FILE_PATH, $hash), $csv);
+
+                return Response::json([
+                    'success' => true,
+                    'hash' => $hash,
+                    'url' => sprintf('%s?%s', $request->getPathInfo(), http_build_query([ 'csv' => 'download', 'hash' => $hash ])),
                 ]);
 
+            } elseif ($request->get('csv') == 'download') {
+
+                $file = sprintf(ServiceProvider::CSV_FILE_PATH, $request->get('hash'));
+
+                if (Storage::exists($file)) {
+
+                    $date = Carbon::now();
+                    $dateFormatted = $date->format('Y-m-d H:i:s');
+
+                    if ($dataTable->getCsvTitle()) {
+                        $csvName = sprintf('CSV Export - %s [%s].csv', $dataTable->getCsvTitle(), $dateFormatted);
+                    } else {
+                        $csvName = sprintf('CSV Export [%s].csv', $dateFormatted);
+                    }
+                    return Response::download(storage_path(sprintf('app/%s', $file)), $csvName)
+                        ->deleteFileAfterSend(true);
+                }
+
+                abort(404);
 
             } else {
                 return Response::json(

@@ -13,7 +13,7 @@
         "php": ">=5.5.9",
         "laravel/framework": "5.*",
         "danielstjules/stringy": "*",
-        "league/csv": "^8.*"
+        "league/csv": "8.*"
     },
     "autoload": {
         "psr-4": {

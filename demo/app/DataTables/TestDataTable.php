@@ -7,6 +7,7 @@ use SevenD\LaravelDataTables\Columns\Column;
 use SevenD\LaravelDataTables\Columns\GroupedJoinColumn;
 use SevenD\LaravelDataTables\Columns\JoinColumn;
 use SevenD\LaravelDataTables\Config\DataTableConfig;
+use Propel\Runtime\ActiveQuery\Criteria;
 
 class TestDataTable extends DataTableConfig
 {
@@ -17,7 +18,10 @@ class TestDataTable extends DataTableConfig
 
     function setUpQuery()
     {
-        $this->setQuery(AdultQuery::create());
+        $this->setQuery(
+            AdultQuery::create()
+                ->filterById(0, Criteria::GREATER_THAN)
+        );
     }
 
     function setUpColumns()
@@ -60,7 +64,7 @@ class TestDataTable extends DataTableConfig
 
         $this->addColumn(JoinColumn::create(['Gender', 'Race', 'Name']));
 
-        $this->addColumn(JoinColumn::create(['Gender', 'Something']));
+        //$this->addColumn(JoinColumn::create(['Gender', 'Something']));
 
         $this->addColumn(JoinColumn::create(['Gender', 'SomethingElse', 'Name']));
 

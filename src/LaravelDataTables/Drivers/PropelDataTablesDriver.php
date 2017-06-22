@@ -80,7 +80,6 @@ class PropelDataTablesDriver
                                     if (method_exists($joinModel, $getFunction)) {
                                         $joinModel = $joinModel->$getFunction();
                                     } else {
-
                                         $rowOutput[$column->getName()] = '';
                                     }
                                 },
@@ -174,7 +173,7 @@ class PropelDataTablesDriver
                     $this->traverseQuery(
                         $column,
                         [
-                            'afterAll' => function (&$query) {
+                            'afterAll' => function (&$query, $level) {
                                 $query->groupBy('Id');
                             }
                         ]
@@ -192,18 +191,19 @@ class PropelDataTablesDriver
         $orders = $this->request->get('order', ['column' => 0, 'dir' => 'asc']);
 
         $query = $this->query;
-		//$query->filterById(0, Criteria::GREATER_THAN); // Hack to ensure all the following is OR'd as the query might have other filters applied. DID YOU EVEN TEST THIS!?!?!?!
-        foreach ($this->config->getColumns() as $columnConfig) {
+        foreach ($this->config->getColumns() as $key => $columnConfig) {
             if ($columnConfig->getSearchable()) {
                // $query->_or();
                 if ($columnConfig instanceof JoinColumn) {
                     $query = $this->traverseQuery(
                         $columnConfig,
                         [
-                            'beforeAll' => function (&$query) {
+                            'beforeAll' => function (&$query, $level) {
+                                $query->_and();
                                 $query->_or();
                             },
-                            'preEachQueryUp' => function (&$query) {
+                            'preEachQueryUp' => function (&$query, $relation, $joinSetting, $join, $level) {
+                                ($level == 0) ? $query->_and() : $query->_or();
                                 $query->_or();
                             },
                             'postEachQueryUp' => function (&$query) {
@@ -299,10 +299,11 @@ class PropelDataTablesDriver
 
 
         if ($this->itemIsCallable($callbacks, 'beforeAll')) {
-            $callbacks['beforeAll']($query);
+            $callbacks['beforeAll']($query, 0);
         }
 
         $count = 0;
+        $level = 0;
         foreach ($joinSettings as $key => $joinSetting) {
             if ($query->getTableMap()->hasRelation($joinSetting['Name'])) {
                 $relation = $query->getTableMap()->getRelation($joinSetting['Name']);
@@ -315,12 +316,12 @@ class PropelDataTablesDriver
                             if ($foreignTable == $localTableMap) {
                                 try {
                                     if ($this->itemIsCallable($callbacks, 'preEachQueryUp')) {
-                                        $callbacks['preEachQueryUp']($query, $relation, $joinSetting, $join);
+                                        $callbacks['preEachQueryUp']($query, $relation, $joinSetting, $join, $level);
                                     }
                                     $useFunction = sprintf('use%sQuery', $relation->getName());
                                     $query = $query->$useFunction($relation->getName() . $index . '_' . $key, JoinColumn::getPropelJoinFromJoinType($joinSetting['JoinType']));
                                     if ($this->itemIsCallable($callbacks, 'postEachQueryUp')) {
-                                        $callbacks['postEachQueryUp']($query, $relation, $joinSetting, $join);
+                                        $callbacks['postEachQueryUp']($query, $relation, $joinSetting, $join, $level);
                                     }
                                 } catch(Exception $e) {
                                     $this->handleException($e);
@@ -329,32 +330,34 @@ class PropelDataTablesDriver
                             }
                         }
                     }
+                    $level++;
                 } else {
                     $queryName = $relation->getName();
                 }
 
                 try {
                     if ($this->itemIsCallable($callbacks, 'preEachQueryUp')) {
-                        $callbacks['preEachQueryUp']($query, $relation, $joinSetting, $join);
+                        $callbacks['preEachQueryUp']($query, $relation, $joinSetting, $join, $level);
                     }
                     $useFunction = sprintf('use%sQuery', $queryName);
                     $query = $query->$useFunction($queryName  .$index . '_' . $key, JoinColumn::getPropelJoinFromJoinType($joinSetting['JoinType']));
                     $count++;
                     if ($this->itemIsCallable($callbacks, 'postEachQueryUp')) {
-                        $callbacks['postEachQueryUp']($query, $relation, $joinSetting, $join);
+                        $callbacks['postEachQueryUp']($query, $relation, $joinSetting, $join, $level);
                     }
                 } catch (Exception $e) {
                     $this->handleException($e);
                     break;
                 }
             }
+			$level++;
         }
 
         try {
             $joinsToReverse = $join->getJoinSettings();
             if (count($joinsToReverse) == $count) {
                 if ($this->itemIsCallable($callbacks, 'topJoin')) {
-                    $callbacks['topJoin']($query, $join, $relation);
+                    $callbacks['topJoin']($query, $join, $relation, $level);
                 }
             }
         } catch (Exception $e) {
@@ -363,23 +366,25 @@ class PropelDataTablesDriver
 
         $joinsToReverse = array_slice($joinsToReverse, 0, $count);
         foreach (array_reverse($joinsToReverse) as $joinSetting) {
+	        $level--;
             try {
                 if ($relation->getType() == RelationMap::MANY_TO_MANY) {
+					$level--;
                     if ($this->itemIsCallable($callbacks, 'preEachQueryDown')) {
-                        $callbacks['preEachQueryDown']($query, $joinSetting, $join);
+                        $callbacks['preEachQueryDown']($query, $joinSetting, $join, $level);
                     }
                     $query = $query->endUse();
                     if ($this->itemIsCallable($callbacks, 'postEachQueryDown')) {
-                        $callbacks['postEachQueryDown']($query, $joinSetting, $join);
+                        $callbacks['postEachQueryDown']($query, $joinSetting, $join, $level);
                     }
                 }
 
                 if ($this->itemIsCallable($callbacks, 'preEachQueryDown')) {
-                    $callbacks['preEachQueryDown']($query, $joinSetting, $join);
+                    $callbacks['preEachQueryDown']($query, $joinSetting, $join, $level);
                 }
                 $query = $query->endUse();
                 if ($this->itemIsCallable($callbacks, 'postEachQueryDown')) {
-                    $callbacks['postEachQueryDown']($query, $joinSetting, $join);
+                    $callbacks['postEachQueryDown']($query, $joinSetting, $join, $level);
                 }
             } catch (Exception $e) {
                 $this->handleException($e);
@@ -388,7 +393,7 @@ class PropelDataTablesDriver
         }
 
         if ($this->itemIsCallable($callbacks, 'afterAll')) {
-            $callbacks['afterAll']($query);
+            $callbacks['afterAll']($query, 0);
         }
 
         return $query;

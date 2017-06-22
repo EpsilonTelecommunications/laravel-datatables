@@ -191,20 +191,20 @@ class PropelDataTablesDriver
         $orders = $this->request->get('order', ['column' => 0, 'dir' => 'asc']);
 
         $query = $this->query;
+        $c = 0;
         foreach ($this->config->getColumns() as $key => $columnConfig) {
             if ($columnConfig->getSearchable()) {
-               // $query->_or();
                 if ($columnConfig instanceof JoinColumn) {
                     $query = $this->traverseQuery(
                         $columnConfig,
                         [
-                            'beforeAll' => function (&$query, $level) {
-                                $query->_and();
-                                $query->_or();
+                            'beforeAll' => function (&$query, $level) use ($c) {
+                                if ($c == 0) {
+	                                $query->_and();
+	                            }
                             },
-                            'preEachQueryUp' => function (&$query, $relation, $joinSetting, $join, $level) {
-                                ($level == 0) ? $query->_and() : $query->_or();
-                                $query->_or();
+                            'preEachQueryUp' => function (&$query, $relation, $joinSetting, $join, $level) use ($c)  {
+                                ($c == 0 && $level == 0) ? $query->_and() : $query->_or();
                             },
                             'postEachQueryUp' => function (&$query) {
                                 $query->_or();
@@ -246,6 +246,7 @@ class PropelDataTablesDriver
             }
             $query->_or();
             $this->query = $query;
+            $c++;
         }
 
         $this->query->_or();

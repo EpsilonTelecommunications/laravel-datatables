@@ -215,7 +215,7 @@ class PropelDataTablesDriver
 //                            'postEachQueryDown' => function (&$query) {
 //                                $query->_or();
 //                            },
-                            'topJoin' => function (&$query, &$join, $relation) use ($searches, $orders) {
+                            'topJoin' => function (&$query, &$join, $relation) use ($searches, $orders, $isFirstFilterBy) {
                                 if (isset($searches['value']) && strlen($searches['value'])) {
 	                                if ($isFirstFilterBy) {
 		                                $query->_and();

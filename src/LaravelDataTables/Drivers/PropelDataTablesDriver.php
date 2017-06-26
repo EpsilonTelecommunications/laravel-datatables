@@ -191,32 +191,38 @@ class PropelDataTablesDriver
         $orders = $this->request->get('order', ['column' => 0, 'dir' => 'asc']);
 
         $query = $this->query;
-        $c = 0;
+        $isFirstFilterBy = true;
         foreach ($this->config->getColumns() as $key => $columnConfig) {
             if ($columnConfig->getSearchable()) {
                 if ($columnConfig instanceof JoinColumn) {
                     $query = $this->traverseQuery(
                         $columnConfig,
                         [
-                            'beforeAll' => function (&$query, $level) use ($c) {
-                                if ($c == 0) {
-	                                $query->_and();
-	                            }
-                            },
-                            'preEachQueryUp' => function (&$query, $relation, $joinSetting, $join, $level) use ($c)  {
-                                ($c == 0 && $level == 0) ? $query->_and() : $query->_or();
-                            },
-                            'postEachQueryUp' => function (&$query) {
-                                $query->_or();
-                            },
-                            'preEachQueryDown' => function (&$query) {
-                                $query->_or();
-                            },
-                            'postEachQueryDown' => function (&$query) {
-                                $query->_or();
-                            },
+//                            'beforeAll' => function (&$query, $level) use ($c) {
+//                                if ($c == 0) {
+//	                                $query->_and();
+//	                            }
+//                            },
+//                            'preEachQueryUp' => function (&$query, $relation, $joinSetting, $join, $level) use ($c)  {
+//                                ($c == 0 && $level == 0) ? $query->_and() : $query->_or();
+//                            },
+//                            'postEachQueryUp' => function (&$query) {
+//                                $query->_or();
+//                            },
+//                            'preEachQueryDown' => function (&$query) {
+//                                $query->_or();
+//                            },
+//                            'postEachQueryDown' => function (&$query) {
+//                                $query->_or();
+//                            },
                             'topJoin' => function (&$query, &$join, $relation) use ($searches, $orders) {
                                 if (isset($searches['value']) && strlen($searches['value'])) {
+	                                if ($isFirstFilterBy) {
+		                                $query->_and();
+		                                $isFirstFilterBy = false;
+	                                } else {
+		                                $query->_or();
+	                                }
                                     $query->filterBy($join->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
                                 }
                                 if (!in_array($relation->getType(), [ RelationMap::MANY_TO_MANY, RelationMap::ONE_TO_MANY ])) {
@@ -227,14 +233,20 @@ class PropelDataTablesDriver
                                     }
                                 }
                             },
-                            'afterAll' => function (&$query) {
-                                $query->_or();
-                            }
+//                            'afterAll' => function (&$query) {
+//                                $query->_or();
+//                            }
                         ]
                     );
                 } else {
                     $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
                     if (!$this->isNeverSearchable($query, $columnConfig)) {
+                        if ($isFirstFilterBy) {
+                            $query->_and();
+                            $isFirstFilterBy = false;
+                        } else {
+                            $query->_or();
+                        }
                         $query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
                     }
                     foreach ($orders as $order) {
@@ -246,7 +258,6 @@ class PropelDataTablesDriver
             }
             $query->_or();
             $this->query = $query;
-            $c++;
         }
 
         $this->query->_or();

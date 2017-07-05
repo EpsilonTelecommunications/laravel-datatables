@@ -65,6 +65,8 @@ class DataTables
             foreach ($this->config->getColumns($type) as $subkey => $column) {
                 if ($column->getRender() instanceof ColumnRender) {
                     $response['data'][$key][$subkey] = View::make($column->getRender()->getRender())->with($data)->render();
+                } else {
+                    $response['data'][$key][$subkey] = htmlentities($response['data'][$key][$subkey]);
                 }
             }
 

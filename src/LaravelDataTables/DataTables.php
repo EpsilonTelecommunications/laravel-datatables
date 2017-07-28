@@ -64,7 +64,8 @@ class DataTables
         foreach ($response['data'] as $key => $data) {
             foreach ($this->config->getColumns($type) as $subkey => $column) {
                 if ($column->getRender() instanceof ColumnRender) {
-                    $response['data'][$key][$subkey] = View::make($column->getRender()->getRender())->with($data)->render();
+                    $renderData = array_merge($column->getRender()->getRenderData(), $data);
+                    $response['data'][$key][$subkey] = View::make($column->getRender()->getRender())->with($renderData)->render();
                 } else {
                     $response['data'][$key][$subkey] = htmlentities($response['data'][$key][$subkey]);
                 }
@@ -93,7 +94,8 @@ class DataTables
         foreach ($response['data'] as $key => $data) {
             foreach ($columns as $subkey => $column) {
                 if ($column->getRender() instanceof ColumnRender) {
-                    $response['data'][$key][$subkey] = View::make($column->getRender()->getRender())->with($data)->render();
+                    $renderData = array_merge($column->getRender()->getRenderData(), $data);
+                    $response['data'][$key][$subkey] = View::make($column->getRender()->getRender())->with($renderData)->render();
                 }
             }
         }

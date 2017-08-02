@@ -18,16 +18,6 @@ class ServiceProvider extends LaravelServiceProvider
      */
     public function boot()
     {
-        //
-    }
-
-    /**
-     * Register any application services.
-     *
-     * @return void
-     */
-    public function register()
-    {
         Response::macro('dataTable', function ($configuration) {
 
             $dataTable = new DataTables;
@@ -80,5 +70,15 @@ class ServiceProvider extends LaravelServiceProvider
                 );
             }
         });
+    }
+
+    /**
+     * Register any application services.
+     *
+     * @return void
+     */
+    public function register()
+    {
+
     }
 }

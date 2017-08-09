@@ -1,5 +1,8 @@
 <?php namespace SevenD\LaravelDataTables\Columns;
 
+use Propel\Generator\Model\PropelTypes;
+use Propel\Runtime\ActiveQuery\Criteria;
+use Propel\Runtime\ActiveQuery\Join;
 use SevenD\LaravelDataTables\Columns\BaseColumn;
 
 class JoinColumn extends BaseColumn
@@ -8,6 +11,7 @@ class JoinColumn extends BaseColumn
     const INNER_JOIN = 'INNER';
 
     protected $joins = [];
+    protected $joinName;
 
     public function __construct($columnDefinition = null, $settings = [])
     {
@@ -77,5 +81,10 @@ class JoinColumn extends BaseColumn
     {
         $this->joinName = $joinName;
         $this->setColumnName($this->joinName);
+    }
+
+    public static function getPropelJoinFromJoinType($type)
+    {
+        return ($type == self::LEFT_JOIN) ? Criteria::LEFT_JOIN : Criteria::INNER_JOIN;
     }
 }

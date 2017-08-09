@@ -1,9 +1,12 @@
 <?php namespace SevenD\LaravelDataTables;
 
 use SevenD\LaravelDataTables\Columns\ColumnRender;
+use SevenD\LaravelDataTables\Columns\GroupedJoinColumn;
 use SevenD\LaravelDataTables\Config\DataTableConfig;
 use SevenD\LaraveLDataTables\Exceptions\NoDriverFoundException;
 use Illuminate\Http\Request;
+use League\Csv\Writer;
+use SplTempFileObject;
 use View;
 
 class DataTables
@@ -47,22 +50,74 @@ class DataTables
         return $this;
     }
 
-    public function makeResponse()
+    public function getConfig()
+    {
+        return $this->config;
+    }
+
+    public function makeResponse($type = '')
     {
         $this->loadDriver();
 
         $response = $this->driver->makeResponse();
 
         foreach ($response['data'] as $key => $data) {
-            foreach ($this->config->getColumns() as $subkey => $column) {
+            foreach ($this->config->getColumns($type) as $subkey => $column) {
                 if ($column->getRender() instanceof ColumnRender) {
-                    $data[$subkey] = View::make($column->getRender()->getRender())->with($data)->render();
+                    $renderData = array_merge($column->getRender()->getRenderData(), $data);
+                    $response['data'][$key][$subkey] = View::make($column->getRender()->getRender())->with($renderData)->render();
+                } else {
+                    $response['data'][$key][$subkey] = htmlentities($response['data'][$key][$subkey]);
                 }
             }
-            $response['data'][$key] = $data;
+
+        }
+        return $response;
+    }
+
+    public function makeResponseCsv()
+    {
+        $this->loadDriver();
+        $this->config->setDefaultColumnType('csv');
+
+        $columns = $this->config->getColumns();
+
+        if (is_null($columns) || count($columns) == 0) {
+            $this->config->setDefaultColumnType('');
+            $columns = $this->config->getColumns();
         }
 
-        return $response;
+        $response = $this->driver->makeResponse();
+
+        $writer = Writer::createFromFileObject(new SplTempFileObject());
+
+        foreach ($response['data'] as $key => $data) {
+            foreach ($columns as $subkey => $column) {
+                if ($column->getRender() instanceof ColumnRender) {
+                    $renderData = array_merge($column->getRender()->getRenderData(), $data);
+                    $response['data'][$key][$subkey] = View::make($column->getRender()->getRender())->with($renderData)->render();
+                }
+            }
+        }
+
+        foreach ($response['data'] as $key => $row) {
+            foreach ($row as $subkey => $column) {
+                if (is_array($column)) {
+                    $response['data'][$key][$subkey] = implode(', ', $columns); // Not sure this is a good idea... but we'll see!
+                } elseif (is_object($column)) {
+                    unset($response['data'][$key][$subkey]);
+                }
+            }
+        }
+
+        $headers = [];
+        foreach ($columns as $column) {
+            $headers[] = $column->getTitle();
+        }
+
+        $writer->insertAll(array_merge([$headers], $response['data']));
+
+        return $writer->__toString();
     }
 
     private function loadDriver()

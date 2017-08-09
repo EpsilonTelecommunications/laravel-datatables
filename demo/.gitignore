@@ -1,7 +1,0 @@
-/vendor
-/node_modules
-/public/storage
-/.vagrant
-Homestead.yaml
-Homestead.json
-.env

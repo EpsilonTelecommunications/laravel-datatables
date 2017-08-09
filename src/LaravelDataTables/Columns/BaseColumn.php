@@ -13,12 +13,12 @@ abstract class BaseColumn
         }
     }
 
-    public function getColumnAttribute($key)
+    public function getColumnAttribute($key, $default = null)
     {
         if (isset($this->columnAttributes[$key])) {
             return $this->columnAttributes[$key];
         } else {
-            return null;
+            return $default;
         }
     }
 
@@ -153,7 +153,7 @@ abstract class BaseColumn
     public function getSearchable()
     {
         $searchable = $this->getColumnAttribute('searchable');
-        return (is_null($searchable) || $searchable) ? true : false;
+        return (is_null($searchable)) ? true : $searchable;
     }
 
     public function setSearchable($value)
@@ -163,7 +163,7 @@ abstract class BaseColumn
     }
 
     public function getTitle() {
-        return $this->getColumnAttribute('title');
+        return $this->getColumnAttribute('title', $this->getName());
     }
 
     public function setTitle($value) {

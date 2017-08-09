@@ -2,17 +2,23 @@
 
 use Propel\Generator\Model\PropelTypes;
 use Propel\Runtime\ActiveQuery\Criteria;
+use Propel\Runtime\Collection\ObjectCollection;
+use Propel\Runtime\Map\RelationMap;
 use SevenD\LaravelDataTables\Columns\BaseColumn;
+use SevenD\LaravelDataTables\Columns\GroupedJoinColumn;
 use SevenD\LaravelDataTables\Config\DataTableConfig;
 use SevenD\LaravelDataTables\Columns\Column;
 use SevenD\LaravelDataTables\Columns\JoinColumn;
 use Illuminate\Http\Request;
 use Propel\Runtime\ActiveQuery\Join;
 use Exception;
+use Log;
+use Config;
 
 class PropelDataTablesDriver
 {
     private $query;
+    private $originalQuery;
     private $request;
     private $config;
 
@@ -25,58 +31,102 @@ class PropelDataTablesDriver
     {
         $this->config = $config;
         $this->query = clone $config->getQuery();
-        $this->originalQuery = clone $this->query;
+        $this->originalQuery = clone $config->getQuery();
+    }
+
+    public function resetQuery()
+    {
+        $this->query = clone $this->originalQuery;
     }
 
     public function makeResponse()
     {
+        $originalColumnType = $this->config->getDefaultColumnType();
+        $this->config->setDefaultColumnType('');
         $results = $this->runQuery();
+        $this->resetQuery();
+        $this->config->setDefaultColumnType($originalColumnType);
+
         $className = false;
 
         $output = [];
+
         foreach ($results['data'] as $row) {
             $rowOutput = [];
 
             if (!$className) {
-                $className = explode('\\', get_class($row));
-                $className = end($className);
+                $className = $this->getClassName($row);
             }
+            $rowOutput[$className . 'Object'] = $row;
+            foreach ($this->config->getColumns() as $column) {
 
-            try {
-                $rowOutput[$className . 'Object'] = $row;
-                foreach ($this->config->getColumns() as $column) {
+                try {
+
                     if ($column instanceof JoinColumn) {
                         $joinModel = $row;
-                        foreach ($column->getJoins() as $join) {
-                            $getFunction = 'get' . $join['Name'];
-                            if (is_callable([$joinModel, $getFunction])) {
-                                $joinModel = $joinModel->$getFunction();
-                                if (is_null($joinModel) && $join['JoinType'] == JoinColumn::INNER_JOIN) {
-                                    throw new Exception; // Dont want this row as we cannot 'join'
-                                }
-                            } else {
-                                $rowOutput[$column->getName()] = '';
-                            }
+
+                        $this->traverseQuery(
+                            $column,
+                            [
+                                'postEachQueryUp' => function($query, $relation) use ($column, &$joinModel, &$rowOutput) {
+
+                                    if ($relation->getType() == RelationMap::MANY_TO_MANY || $relation->getType() == RelationMap::ONE_TO_MANY) {
+                                        $getterName = $relation->getPluralName();
+                                    } else {
+                                        $getterName = $relation->getName();
+                                    }
+
+                                    $getFunction = sprintf('get%s', $getterName);
+                                    if (method_exists($joinModel, $getFunction)) {
+                                        $joinModel = $joinModel->$getFunction();
+                                    } else {
+                                        $rowOutput[$column->getName()] = '';
+                                    }
+                                },
+                                'topJoin' => function() use ($column, &$joinModel, &$rowOutput) {
+                                    if ($joinModel instanceof ObjectCollection) {
+                                        $joinModels = [];
+                                        foreach ($joinModel as $k => $v) {
+                                            $joinModels[] = $v;
+                                        }
+                                    } else {
+                                        $joinModels = [ $joinModel ];
+                                    }
+                                    $rowOutput[$column->getName()] = '';
+                                    $getFunction = sprintf('get%s', $column->getColumnName());
+                                    $results = [];
+                                    foreach ($joinModels as $jm) {
+                                        if (method_exists($jm, $getFunction)) {
+                                            $results[] = $jm->$getFunction();
+                                        }
+                                    }
+                                    $rowOutput[$column->getName()] = implode(($column instanceof GroupedJoinColumn) ? $column->getSeparator() : ', ', $results);
+                                },
+                            ]
+                        );
+                    } else {
+                        $getFunction = sprintf('get%s', $column->getColumnName());
+                        if ($getFunction == 'getDateOfBirth') {
                         }
-                        if ($joinModel) {
-                            $getFunction = sprintf('get%s', $column->getColumnName());
-                            if (is_callable([$joinModel, $getFunction])) {
-                                $rowOutput[$column->getName()] = $joinModel->$getFunction();
-                            }
+                        if (method_exists($row, $getFunction)) {
+                            $rowOutput[$column->getName()] = $row->$getFunction();
                         } else {
                             $rowOutput[$column->getName()] = '';
                         }
-                    } else {
-                        $getFunction = sprintf('get%s', $column->getColumnName());
-                        if (is_callable([$row, $getFunction])) {
-                            $rowOutput[$column->getName()] = $row->$getFunction();
-                        }
                     }
+
+                } catch (Exception $e) {
+                    $this->handleException($e);
+                    $rowOutput[$column->getName()] = '';
+                } finally {
+                    if (!isset($rowOutput[$column->getName()])) {
+                        $rowOutput[$column->getName()] = '';
+                    }
+                    $this->resetQuery();
                 }
-                $output[] = $rowOutput;
-            } catch (Exception $e) {
-                // Mute
             }
+            $output[] = $rowOutput;
+
         }
 
         return [
@@ -86,23 +136,27 @@ class PropelDataTablesDriver
         ];
     }
 
+    private function getClassName($class)
+    {
+        $className = explode('\\', get_class($class));
+        return end($className);
+    }
+
     private function runQuery()
     {
-        //$this->doJoins();
+        $this->doJoins();
+        $this->query->groupBy('Id');
+        $recordsTotal = $this->query->select('Id')->count();
+        $this->resetQuery();
 
-
-        $recordsTotal = $this->query->count();
-
-        $this->query = clone $this->originalQuery;
         $this->doFilter();
-
+        $this->query->groupBy('Id');
         $recordsFiltered = $this->query->count();
-
-        $this->query = clone $this->originalQuery;
+        $this->resetQuery();
 
         $this->doFilter();
-        $this->doOrderBy();
         $this->doLimit();
+        $this->query->groupBy('Id');
 
         return [
             'data' => $this->query->find(),
@@ -113,77 +167,100 @@ class PropelDataTablesDriver
 
     private function doJoins()
     {
-        foreach ($this->config->getColumns() as $key => $column) {
-            if ($column instanceof JoinColumn) {
-                $query = $this->query;
-                foreach ($column->getJoinSettings() as $settings) {
-                    // $query->join($settings['Name'], $settings['JoinType']);
-                    $useQueryFunction = sprintf('use%sQuery', $settings['Name']);
-                    $query = $query->$useQueryFunction($settings['Name'].$key);
-                }
-            }
-        }
-    }
-
-    private function doOrderBy()
-    {
-        $orders = $this->request->get('order', []);
-        $query = $this->query;
         try {
-            foreach ($orders as $order) {
-                $columnConfig = $this->config->getColumnByIndex($order['column']);
-                if ($columnConfig instanceof JoinColumn) {
-                    $column = implode('.', [$columnConfig->getJoinName(), $columnConfig->getColumnName()]);
-                    foreach (explode('.', $columnConfig->getJoinName()) as $key => $part) {
-                        $useQueryFunction = sprintf('use%sQuery', $part);
-                        $query = $query->$useQueryFunction($part.$key);
-                    }
-                    $query->orderBy($columnConfig->getColumnName(), $order['dir']);
-                    foreach (explode('.', $columnConfig->getJoinName()) as $part) {
-                        $query = $query->endUse();
-                    }
-                    $this->query = $query;
-                } else {
-                    $column = $this->query->getTableMap()->getPhpName() . '.' . $columnConfig->getColumnName();
-                    $this->query->orderBy($column, $order['dir']);
+            foreach ($this->config->getColumns() as $column) {
+                if ($column instanceof JoinColumn) {
+                    $this->traverseQuery(
+                        $column,
+                        [
+                            'afterAll' => function (&$query, $level) {
+                                $query->groupBy('Id');
+                            }
+                        ]
+                    );
                 }
             }
-        } catch (\Exception $e) {
-            // muted
+        } catch (Exception $e) {
+            $this->handleException($e);
         }
     }
 
     public function doFilter()
     {
         $searches = $this->request->get('search', []);
+        $orders = $this->request->get('order', ['column' => 0, 'dir' => 'asc']);
 
-        if (isset($searches['value']) && strlen($searches['value'])) {
-            foreach ($this->config->getColumns() as $k => $columnConfig) {
-                if ($columnConfig->getSearchable()) {
-                    $query = $this->query;
-                    if ($columnConfig instanceof JoinColumn) {
-                        foreach ($columnConfig->getJoinSettings() as $key => $settings) {
-                            // $query->join($settings['Name'], $settings['JoinType']);
-                            $useQueryFunction = sprintf('use%sQuery', $settings['Name']);
-                            $query = $query->$useQueryFunction($settings['Name'].$k.$key);
+        $query = $this->query;
+        $isFirstFilterBy = true;
+        foreach ($this->config->getColumns() as $key => $columnConfig) {
+            if ($columnConfig->getSearchable()) {
+                if ($columnConfig instanceof JoinColumn) {
+                    $query = $this->traverseQuery(
+                        $columnConfig,
+                        [
+//                            'beforeAll' => function (&$query, $level) use ($c) {
+//                                if ($c == 0) {
+//	                                $query->_and();
+//	                            }
+//                            },
+//                            'preEachQueryUp' => function (&$query, $relation, $joinSetting, $join, $level) use ($c)  {
+//                                ($c == 0 && $level == 0) ? $query->_and() : $query->_or();
+//                            },
+//                            'postEachQueryUp' => function (&$query) {
+//                                $query->_or();
+//                            },
+//                            'preEachQueryDown' => function (&$query) {
+//                                $query->_or();
+//                            },
+//                            'postEachQueryDown' => function (&$query) {
+//                                $query->_or();
+//                            },
+                            'topJoin' => function (&$query, &$join, $relation) use ($searches, $orders, &$isFirstFilterBy) {
+                                if (isset($searches['value']) && strlen($searches['value'])) {
+                                    if ($isFirstFilterBy) {
+                                        $query->_and();
+                                        $isFirstFilterBy = false;
+                                    } else {
+                                        $query->_or();
+                                    }
+                                    $query->filterBy($join->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
+                                }
+                                if (!in_array($relation->getType(), [ RelationMap::MANY_TO_MANY, RelationMap::ONE_TO_MANY ])) {
+                                    foreach ($orders as $order) {
+                                        if (isset($order['column']) && $this->config->getIndexForColumn($join) == $order['column']) {
+                                            $query->orderBy($join->getColumnName(), $order['dir']);
+                                        }
+                                    }
+                                }
+                            },
+//                            'afterAll' => function (&$query) {
+//                                $query->_or();
+//                            }
+                        ]
+                    );
+                } else {
+                    $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
+                    if (!$this->isNeverSearchable($query, $columnConfig)) {
+                        if ($isFirstFilterBy) {
+                            $query->_and();
+                            $isFirstFilterBy = false;
+                        } else {
+                            $query->_or();
                         }
-
-                        if (!$this->isNeverSearchable($query, $columnConfig)) {
-                            $query->filterBy($columnConfig->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
-                        }
-
-                        foreach (array_reverse($columnConfig->getJoinSettings()) as $settings) {
-                            $query = $query->endUse()->_or();
-                        }
-                    } else {
-                        $column = $this->query->getTableMap()->getPhpName() . '.' . $columnConfig->getColumnName();
-                        if (!$this->isNeverSearchable($this->query, $columnConfig)) {
-                            $this->query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
+                        $query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
+                    }
+                    foreach ($orders as $order) {
+                        if (isset($order['column']) && $this->config->getIndexForColumn($columnConfig) == $order['column']) {
+                            $query->orderBy($column, $order['dir']);
                         }
                     }
                 }
             }
+            $query->_or();
+            $this->query = $query;
         }
+
+        $this->query->_or();
     }
 
     private function isNeverSearchable($query, $columnConfig)
@@ -217,6 +294,130 @@ class PropelDataTablesDriver
         }
         if ($offset) {
             $this->query->offset($offset);
+        }
+    }
+
+    private function itemIsCallable($array, $index)
+    {
+        return (isset($array[$index]) && is_callable($array[$index]));
+    }
+
+    public function traverseQuery(JoinColumn $join, $callbacks = [])
+    {
+        $index = $this->config->getIndexForColumn($join);
+        $query = $this->query;
+
+        $joinSettings = $join->getJoinSettings();
+
+
+        if ($this->itemIsCallable($callbacks, 'beforeAll')) {
+            $callbacks['beforeAll']($query, 0);
+        }
+
+        $count = 0;
+        $level = 0;
+        foreach ($joinSettings as $key => $joinSetting) {
+            if ($query->getTableMap()->hasRelation($joinSetting['Name'])) {
+                $relation = $query->getTableMap()->getRelation($joinSetting['Name']);
+                $queryName = false;
+                if ($relation->getType() == RelationMap::MANY_TO_MANY) {
+                    $localTableMap = $relation->getLocalTable(); // This is actually the foreign
+                    foreach ($query->getTableMap()->getRelations() as $relation) {
+                        if ($relation->getType() == RelationMap::ONE_TO_MANY) {
+                            $foreignTable = $relation->getLocalTable()->getRelation($joinSetting['Name'])->getForeignTable();
+                            if ($foreignTable == $localTableMap) {
+                                try {
+                                    if ($this->itemIsCallable($callbacks, 'preEachQueryUp')) {
+                                        $callbacks['preEachQueryUp']($query, $relation, $joinSetting, $join, $level);
+                                    }
+                                    $useFunction = sprintf('use%sQuery', $relation->getName());
+                                    $query = $query->$useFunction($relation->getName() . $index . '_' . $key, JoinColumn::getPropelJoinFromJoinType($joinSetting['JoinType']));
+                                    if ($this->itemIsCallable($callbacks, 'postEachQueryUp')) {
+                                        $callbacks['postEachQueryUp']($query, $relation, $joinSetting, $join, $level);
+                                    }
+                                } catch(Exception $e) {
+                                    $this->handleException($e);
+                                }
+                                $queryName = $foreignTable->getPhpName();
+                            }
+                        }
+                    }
+                    $level++;
+                } else {
+                    $queryName = $relation->getName();
+                }
+
+                try {
+                    if ($this->itemIsCallable($callbacks, 'preEachQueryUp')) {
+                        $callbacks['preEachQueryUp']($query, $relation, $joinSetting, $join, $level);
+                    }
+                    $useFunction = sprintf('use%sQuery', $queryName);
+                    $query = $query->$useFunction($queryName  .$index . '_' . $key, JoinColumn::getPropelJoinFromJoinType($joinSetting['JoinType']));
+                    $count++;
+                    if ($this->itemIsCallable($callbacks, 'postEachQueryUp')) {
+                        $callbacks['postEachQueryUp']($query, $relation, $joinSetting, $join, $level);
+                    }
+                } catch (Exception $e) {
+                    $this->handleException($e);
+                    break;
+                }
+            }
+            $level++;
+        }
+
+        try {
+            $joinsToReverse = $join->getJoinSettings();
+            if (count($joinsToReverse) == $count) {
+                if ($this->itemIsCallable($callbacks, 'topJoin')) {
+                    $callbacks['topJoin']($query, $join, $relation, $level);
+                }
+            }
+        } catch (Exception $e) {
+            $this->handleException($e);
+        }
+
+        $joinsToReverse = array_slice($joinsToReverse, 0, $count);
+        foreach (array_reverse($joinsToReverse) as $joinSetting) {
+            $level--;
+            try {
+                if ($relation->getType() == RelationMap::MANY_TO_MANY) {
+                    $level--;
+                    if ($this->itemIsCallable($callbacks, 'preEachQueryDown')) {
+                        $callbacks['preEachQueryDown']($query, $joinSetting, $join, $level);
+                    }
+                    $query = $query->endUse();
+                    if ($this->itemIsCallable($callbacks, 'postEachQueryDown')) {
+                        $callbacks['postEachQueryDown']($query, $joinSetting, $join, $level);
+                    }
+                }
+
+                if ($this->itemIsCallable($callbacks, 'preEachQueryDown')) {
+                    $callbacks['preEachQueryDown']($query, $joinSetting, $join, $level);
+                }
+                $query = $query->endUse();
+                if ($this->itemIsCallable($callbacks, 'postEachQueryDown')) {
+                    $callbacks['postEachQueryDown']($query, $joinSetting, $join, $level);
+                }
+            } catch (Exception $e) {
+                $this->handleException($e);
+                break;
+            }
+        }
+
+        if ($this->itemIsCallable($callbacks, 'afterAll')) {
+            $callbacks['afterAll']($query, 0);
+        }
+
+        return $query;
+    }
+
+    private function handleException(Exception $e)
+    {
+        if (Config::get('app.debug')) {
+            throw $e;
+        } else {
+            Log::error($e->getMessage());
+            Log::error($e->getTraceAsString());
         }
     }
 }

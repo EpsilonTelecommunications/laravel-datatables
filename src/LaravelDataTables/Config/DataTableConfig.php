@@ -70,7 +70,7 @@ abstract class DataTableConfig
     public function query($closure)
     {
         $closure($this->query);
-        
+
         return $this;
     }
 
@@ -91,7 +91,24 @@ abstract class DataTableConfig
     {
         $columnType = $this->getColumnTypePropertyName($type);
         $this->{$columnType}[$column->getName()] = $column;
-		return $this;
+        return $this;
+    }
+
+    public function removeColumn(BaseColumn $removeColumn, $type = null)
+    {
+        $columnType = $this->getColumnTypePropertyName($type);
+        $i = 0;
+        foreach ($this->getColumns($type) as $key => $column) {
+            if ($removeColumn == $column) {
+                array_splice($this->$columnType, $i, 1);
+            }
+            $i++;
+        }
+    }
+
+    public function removeColumnByName($name, $type = null)
+    {
+        $this->removeColumn($this->getColumn($name, $type), $type);
     }
 
     public function getColumns($type = null)
@@ -105,9 +122,9 @@ abstract class DataTableConfig
         return array_values($this->getColumns($type));
     }
 
-    public function getColumn($name)
+    public function getColumn($name, $type = null)
     {
-        $columns = $this->getColumns();
+        $columns = $this->getColumns($type);
         if (isset($columns[$name])) {
             return $columns[$name];
         }

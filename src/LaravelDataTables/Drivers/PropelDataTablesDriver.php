@@ -21,6 +21,8 @@ class PropelDataTablesDriver
     private $originalQuery;
     private $request;
     private $config;
+    private $classNamesCache;
+    private $methodExistsCache;
 
     public function setRequest(Request $request)
     {
@@ -43,7 +45,7 @@ class PropelDataTablesDriver
     {
         $originalColumnType = $this->config->getDefaultColumnType();
         $this->config->setDefaultColumnType('');
-        $results = $this->runQuery();
+        $results = $this->runQuery($originalColumnType);
         $this->resetQuery();
         $this->config->setDefaultColumnType($originalColumnType);
 
@@ -51,68 +53,87 @@ class PropelDataTablesDriver
 
         $output = [];
 
+        $dataTableColumns = $this->config->getColumns();
+
+        $totalTimes = [
+            'traverse' => 0,
+            'flatCol' => 0,
+            'postEachQueryUp' => 0,
+            'postEachQueryUpCount' => 0,
+            'topJoin' => 0,
+            'topJoinCount' => 0,
+        ];
+
+        $getterChain = [];
         foreach ($results['data'] as $row) {
             $rowOutput = [];
 
             if (!$className) {
                 $className = $this->getClassName($row);
             }
+
             $rowOutput[$className . 'Object'] = $row;
-            foreach ($this->config->getColumns() as $column) {
-
+            foreach ($dataTableColumns as $column) {
                 try {
-
                     if ($column instanceof JoinColumn) {
                         $joinModel = $row;
 
-                        $this->traverseQuery(
-                            $column,
-                            [
-                                'postEachQueryUp' => function($query, $relation) use ($column, &$joinModel, &$rowOutput) {
-
-                                    if ($relation->getType() == RelationMap::MANY_TO_MANY || $relation->getType() == RelationMap::ONE_TO_MANY) {
-                                        $getterName = $relation->getPluralName();
-                                    } else {
-                                        $getterName = $relation->getName();
-                                    }
-
-                                    $getFunction = sprintf('get%s', $getterName);
-                                    if (method_exists($joinModel, $getFunction)) {
-                                        $joinModel = $joinModel->$getFunction();
-                                    } else {
-                                        $rowOutput[$column->getName()] = '';
-                                    }
-                                },
-                                'topJoin' => function() use ($column, &$joinModel, &$rowOutput) {
-                                    if ($joinModel instanceof ObjectCollection) {
-                                        $joinModels = [];
-                                        foreach ($joinModel as $k => $v) {
-                                            $joinModels[] = $v;
+                        if (!isset($getterChain[$column->getName()])) {
+                            $getterChain[$column->getName()] = [];
+                            $this->traverseQuery(
+                                $column,
+                                [
+                                    'postEachQueryUp' => function($query, $relation) use ($column, &$joinModel, &$rowOutput, &$getterChain) {
+                                        if ($relation->getType() == RelationMap::MANY_TO_MANY || $relation->getType() == RelationMap::ONE_TO_MANY) {
+                                            $getterName = $relation->getPluralName();
+                                        } else {
+                                            $getterName = $relation->getName();
                                         }
-                                    } else {
-                                        $joinModels = [ $joinModel ];
-                                    }
-                                    $rowOutput[$column->getName()] = '';
-                                    $getFunction = sprintf('get%s', $column->getColumnName());
-                                    $results = [];
-                                    foreach ($joinModels as $jm) {
-                                        if (method_exists($jm, $getFunction)) {
-                                            $results[] = $jm->$getFunction();
+
+                                        $getFunction = sprintf('get%s', $getterName);
+                                        if (method_exists($joinModel, $getFunction)) {
+                                            $joinModel = $joinModel->$getFunction();
+                                            $getterChain[$column->getName()][] = $getFunction;
                                         }
-                                    }
-                                    $rowOutput[$column->getName()] = implode(($column instanceof GroupedJoinColumn) ? $column->getSeparator() : ', ', $results);
-                                },
-                            ]
-                        );
-                    } else {
-                        $getFunction = sprintf('get%s', $column->getColumnName());
-                        if ($getFunction == 'getDateOfBirth') {
+                                    },
+                                    'topJoin' => function() use ($column, &$joinModel, &$rowOutput, &$totalTimes, &$getterChain) {
+                                        $getFunction = sprintf('get%s', $column->getColumnName());
+                                        $getterChain[$column->getName()][] = $getFunction;
+                                    },
+                                ]
+                            );
                         }
+
+                        foreach ($getterChain[$column->getName()] as $getter) {
+                            if (is_string($joinModel)) {
+                                break;
+                            } elseif (is_array($joinModel)) {
+                                foreach ($joinModel as $jm) {
+                                    if (method_exists($jm, $getter)) {
+                                        $value = $jm->$getter();
+                                        if (is_string($value) || is_numeric($value)) {
+                                            $results[] = $value;
+                                        }
+                                    }
+                                }
+                                $joinModel = implode(', ', $results);
+                            } elseif (method_exists($joinModel, $getter)) {
+                                $joinModel = $joinModel->$getter();
+                            } else {
+                                $joinModel = '';
+                            }
+                        }
+                        $rowOutput[$column->getName()] = $joinModel;
+
+                    } else {
+                        $eStart = microtime(true);
+                        $getFunction = sprintf('get%s', $column->getColumnName());
                         if (method_exists($row, $getFunction)) {
                             $rowOutput[$column->getName()] = $row->$getFunction();
                         } else {
                             $rowOutput[$column->getName()] = '';
                         }
+                        $totalTimes['flatCol'] = $totalTimes['flatCol'] + (microtime(true) - $eStart);
                     }
 
                 } catch (Exception $e) {
@@ -126,43 +147,64 @@ class PropelDataTablesDriver
                 }
             }
             $output[] = $rowOutput;
-
         }
 
-        return [
-            'data' => $output,
-            'recordsFiltered' => $results['recordsFiltered'],
-            'recordsTotal' => $results['recordsTotal'],
-        ];
+        $response = [ 'data' => $output ];
+
+        if (isset($results['recordsFiltered'])) {
+            $response['recordsFiltered'] = $results['recordsFiltered'];
+        }
+
+        if (isset($results['recordsTotal'])) {
+            $response['recordsTotal'] = $results['recordsTotal'];
+        }
+
+        return $response;
+    }
+
+    private function methodExists($class, $methodName)
+    {
+        $className = $this->getClassName($class);
+        $key = sprintf('%s::%s', $className, $methodName);
+        if (!isset($this->methodExistsCache[$key])) {
+            $this->methodExistsCache[$key] = method_exists($class, $methodName);
+        }
+
+        return $this->methodExistsCache[$key];
     }
 
     private function getClassName($class)
     {
-        $className = explode('\\', get_class($class));
-        return end($className);
+        $class = get_class($class);
+        if (!isset($this->classNamesCache[$class])) {
+            $className = explode('\\', $class);
+            $this->classNamesCache[$class] = end($className);
+        }
+        return $this->classNamesCache[$class];
     }
 
-    private function runQuery()
+    private function runQuery($columnType)
     {
-        $this->doJoins();
-        $this->query->groupBy('Id');
-        $recordsTotal = $this->query->select('Id')->count();
-        $this->resetQuery();
+        $response = [];
+        if ($columnType != 'csv') {
+            $this->doJoins();
+            $this->query->groupBy('Id');
+            $response['recordsTotal'] = $this->query->select('Id')->count();
+            $this->resetQuery();
 
-        $this->doFilter();
-        $this->query->groupBy('Id');
-        $recordsFiltered = $this->query->count();
-        $this->resetQuery();
+            $this->doFilter();
+            $this->query->groupBy('Id');
+            $response['recordsFiltered'] = $this->query->count();
+            $this->resetQuery();
+        }
 
         $this->doFilter();
         $this->doLimit();
         $this->query->groupBy('Id');
 
-        return [
-            'data' => $this->query->find(),
-            'recordsFiltered' => $recordsFiltered,
-            'recordsTotal' => $recordsTotal,
-        ];
+        $response['data'] = $this->query->find();
+
+        return $response;
     }
 
     private function doJoins()

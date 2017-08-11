@@ -289,7 +289,9 @@ class PropelDataTablesDriver
                         } else {
                             $query->_or();
                         }
-                        $query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
+                        if (isset($searches['value']) && strlen($searches['value'])) {
+                            $query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
+                        }
                     }
                     foreach ($orders as $order) {
                         if (isset($order['column']) && $this->config->getIndexForColumn($columnConfig) == $order['column']) {

@@ -77,6 +77,7 @@ class PropelDataTablesDriver
                 try {
                     if ($column instanceof JoinColumn) {
                         $joinModel = $row;
+                        $topJoinModel = $row;
 
                         if (!isset($getterChain[$column->getName()])) {
                             $getterChain[$column->getName()] = [];
@@ -103,6 +104,8 @@ class PropelDataTablesDriver
                                 ]
                             );
                         }
+
+                        $joinModel = $topJoinModel;
 
                         foreach ($getterChain[$column->getName()] as $getter) {
                             if (is_string($joinModel)) {

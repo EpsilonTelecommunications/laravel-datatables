@@ -5,6 +5,7 @@ use Stringy\Stringy;
 abstract class BaseColumn
 {
     protected $columnAttributes;
+    protected $dateFormat = 'Y-m-d -- H:i:s';
 
     public function __construct($columnName = null, $settings = [])
     {
@@ -198,5 +199,15 @@ abstract class BaseColumn
     public function setWidth($value) {
         $this->setColumnAttribute('width', $value);
         return $this;
+    }
+
+    public function getDateFormat()
+    {
+        return $this->dateFormat;
+    }
+
+    public function setDateFormat($dateFormat)
+    {
+        $this->dateFormat = $dateFormat;
     }
 }

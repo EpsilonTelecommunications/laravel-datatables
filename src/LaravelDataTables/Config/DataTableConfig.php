@@ -13,7 +13,7 @@ abstract class DataTableConfig
     protected $sorting = [];
     protected $title;
     protected $csvTitle;
-
+    protected $timezone = 'UTC';
 
     public function __construct()
     {
@@ -281,6 +281,24 @@ abstract class DataTableConfig
     public function setDefaultColumnType($defaultColumnType)
     {
         $this->defaultColumnType = $defaultColumnType;
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getTimezone()
+    {
+        return $this->timezone;
+    }
+
+    /**
+     * @param string $timezone
+     * @return DataTableConfig
+     */
+    public function setTimezone($timezone)
+    {
+        $this->timezone = $timezone;
         return $this;
     }
 }

@@ -99,6 +99,8 @@ class DataTables
                 if ($column->getRender() instanceof ColumnRender) {
                     $renderData = array_merge($column->getRender()->getRenderData(), $data);
                     $response['data'][$key][$subkey] = View::make($column->getRender()->getRender())->with($renderData)->render();
+                } elseif($response['data'][$key][$subkey] instanceof DateTime) {
+                    $response['data'][$key][$subkey] = $response['data'][$key][$subkey]->setTimezone($this->config->getTimezone())->format($column->getDateFormat());
                 }
             }
         }
@@ -107,8 +109,6 @@ class DataTables
             foreach ($row as $subkey => $column) {
                 if (is_array($column)) {
                     $response['data'][$key][$subkey] = implode(', ', $columns); // Not sure this is a good idea... but we'll see!
-                } elseif($response['data'][$key][$subkey] instanceof DateTime) {
-                    $response['data'][$key][$subkey] = $response['data'][$key][$subkey]->setTimezone($this->config->getTimezone())->format($column->getDateFormat());
                 } elseif (is_object($column)) {
                     unset($response['data'][$key][$subkey]);
                 }

@@ -5,7 +5,7 @@ use Stringy\Stringy;
 abstract class BaseColumn
 {
     protected $columnAttributes;
-    protected $dateFormat = 'Y-m-d -- H:i:s';
+    protected $dateFormat = 'Y-m-d H:i:s';
 
     public function __construct($columnName = null, $settings = [])
     {

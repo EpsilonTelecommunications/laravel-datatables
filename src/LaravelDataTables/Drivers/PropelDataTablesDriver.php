@@ -324,7 +324,8 @@ class PropelDataTablesDriver
                     PropelTypes::BOOLEAN,
                     PropelTypes::TIMESTAMP,
                     PropelTypes::DATE,
-                    PropelTypes::TIME
+                    PropelTypes::TIME,
+                    PropelTypes::ENUM,
                 ]
             );
         }

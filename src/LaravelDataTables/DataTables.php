@@ -61,9 +61,9 @@ class DataTables
         $this->loadDriver();
 
         $response = $this->driver->makeResponse();
-
         foreach ($response['data'] as $key => $data) {
-            foreach ($this->config->getColumns($type) as $subkey => $column) {
+            $columns = $this->config->getColumns($type);
+            foreach ($columns as $subkey => $column) {
                 if ($column->getRender() instanceof ColumnRender) {
                     $renderData = array_merge($column->getRender()->getRenderData(), $data);
                     $response['data'][$key][$subkey] = View::make($column->getRender()->getRender())->with($renderData)->render();
@@ -73,7 +73,9 @@ class DataTables
                     $response['data'][$key][$subkey] = htmlentities($response['data'][$key][$subkey]);
                 }
             }
-
+            foreach (array_diff(array_keys($data), array_keys($columns)) as $keyToUnset) {
+                unset($response['data'][$key][$keyToUnset]);
+            }
         }
         return $response;
     }

@@ -12,6 +12,7 @@ abstract class BaseColumn
         if ($columnName) {
             $this->setColumnName($columnName);
         }
+        $this->setOrderable(true);
     }
 
     public function getColumnAttribute($key, $default = null)

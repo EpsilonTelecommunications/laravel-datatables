@@ -77,6 +77,11 @@ class DataTables
                 unset($response['data'][$key][$keyToUnset]);
             }
         }
+
+        if ($this->config->includeConfigInResponse()) {
+            $response['config'] = $this->config->getJson();
+        }
+
         return $response;
     }
 

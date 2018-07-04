@@ -14,6 +14,7 @@ abstract class DataTableConfig
     protected $title;
     protected $csvTitle;
     protected $timezone = 'UTC';
+    protected $includeConfigInResponse = false;
 
     public function __construct()
     {
@@ -299,6 +300,24 @@ abstract class DataTableConfig
     public function setTimezone($timezone)
     {
         $this->timezone = $timezone;
+        return $this;
+    }
+
+    /**
+     * @return boolean
+     */
+    public function includeConfigInResponse()
+    {
+        return $this->includeConfigInResponse;
+    }
+
+    /**
+     * @param boolean $includeConfigInResponse
+     * @return DataTableConfig
+     */
+    public function setIncludeConfigInResponse($includeConfigInResponse)
+    {
+        $this->includeConfigInResponse = $includeConfigInResponse;
         return $this;
     }
 }

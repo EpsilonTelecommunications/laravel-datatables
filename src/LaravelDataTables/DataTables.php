@@ -79,7 +79,7 @@ class DataTables
         }
 
         if ($this->config->includeConfigInResponse()) {
-            $response['config'] = $this->config->getJson();
+            $response['config'] = $this->config->getConfigArray();
         }
 
         return $response;

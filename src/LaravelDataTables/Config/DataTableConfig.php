@@ -167,7 +167,7 @@ abstract class DataTableConfig
         $this->sorting = $sorting;
     }
 
-    public function getJson($type = null)
+    public function getConfigArray($type = null)
     {
         $config = [];
 
@@ -177,7 +177,12 @@ abstract class DataTableConfig
 
         $config['order'] = $this->sorting;
 
-        return json_encode($config, true);
+        return $config;
+    }
+
+    public function getJson($type = null)
+    {
+        return json_encode($this->getConfigArray($type), JSON_PRETTY_PRINT);
     }
 
     public function getHtml($id, $withJson = false)

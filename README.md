@@ -160,3 +160,5 @@ var mailboxesDataTable = app.buildDataTable('usersDataTable');
 * The parameter should replicate the variable name of the datatable passed to the view.
 
 Assuming you have the custom app library set up correctly you should now have an interactive datatable. 
+
+

@@ -84,7 +84,7 @@ class PropelDataTablesDriver
                             $this->traverseQuery(
                                 $column,
                                 [
-                                    'postEachQueryUp' => function($query, $relation) use ($column, &$joinModel, &$rowOutput, &$getterChain) {
+                                    'postEachQueryUp' => function ($query, $relation) use ($column, &$joinModel, &$rowOutput, &$getterChain) {
                                         if ($relation->getType() == RelationMap::MANY_TO_MANY || $relation->getType() == RelationMap::ONE_TO_MANY) {
                                             $getterName = $relation->getPluralName();
                                         } else {
@@ -97,7 +97,7 @@ class PropelDataTablesDriver
                                             $getterChain[$column->getName()][] = $getFunction;
                                         }
                                     },
-                                    'topJoin' => function() use ($column, &$joinModel, &$rowOutput, &$totalTimes, &$getterChain) {
+                                    'topJoin' => function () use ($column, &$joinModel, &$rowOutput, &$totalTimes, &$getterChain) {
                                         $getFunction = sprintf('get%s', $column->getColumnName());
                                         $getterChain[$column->getName()][] = $getFunction;
                                     },
@@ -152,7 +152,7 @@ class PropelDataTablesDriver
             $output[] = $rowOutput;
         }
 
-        $response = [ 'data' => $output ];
+        $response = ['data' => $output];
 
         if (isset($results['recordsFiltered'])) {
             $response['recordsFiltered'] = $results['recordsFiltered'];
@@ -238,11 +238,10 @@ class PropelDataTablesDriver
         $query = $this->query;
         $isFirstFilterBy = true;
         foreach ($this->config->getColumns() as $key => $columnConfig) {
-            if ($columnConfig->getSearchable()) {
-                if ($columnConfig instanceof JoinColumn) {
-                    $query = $this->traverseQuery(
-                        $columnConfig,
-                        [
+            if ($columnConfig instanceof JoinColumn) {
+                $query = $this->traverseQuery(
+                    $columnConfig,
+                    [
 //                            'beforeAll' => function (&$query, $level) use ($c) {
 //                                if ($c == 0) {
 //	                                $query->_and();
@@ -260,7 +259,8 @@ class PropelDataTablesDriver
 //                            'postEachQueryDown' => function (&$query) {
 //                                $query->_or();
 //                            },
-                            'topJoin' => function (&$query, &$join, $relation) use ($searches, $orders, &$isFirstFilterBy) {
+                        'topJoin' => function (&$query, &$join, $relation) use ($searches, $orders, &$isFirstFilterBy) {
+                            if (!$this->isNeverSearchable($query, $join) && $join->getSearchable()) {
                                 if (isset($searches['value']) && strlen($searches['value'])) {
                                     if ($isFirstFilterBy) {
                                         $query->_and();
@@ -270,36 +270,36 @@ class PropelDataTablesDriver
                                     }
                                     $query->filterBy($join->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
                                 }
-                                if (!in_array($relation->getType(), [ RelationMap::MANY_TO_MANY, RelationMap::ONE_TO_MANY ])) {
-                                    foreach ($orders as $order) {
-                                        if (isset($order['column']) && $this->config->getIndexForColumn($join) == $order['column']) {
-                                            $query->orderBy($join->getColumnName(), $order['dir']);
-                                        }
+                            }
+                            if (!in_array($relation->getType(), [RelationMap::MANY_TO_MANY, RelationMap::ONE_TO_MANY])) {
+                                foreach ($orders as $order) {
+                                    if (isset($order['column']) && $this->config->getIndexForColumn($join) == $order['column']) {
+                                        $query->orderBy($join->getColumnName(), $order['dir']);
                                     }
                                 }
-                            },
+                            }
+                        },
 //                            'afterAll' => function (&$query) {
 //                                $query->_or();
 //                            }
-                        ]
-                    );
-                } else {
-                    $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
-                    if (!$this->isNeverSearchable($query, $columnConfig)) {
-                        if ($isFirstFilterBy) {
-                            $query->_and();
-                            $isFirstFilterBy = false;
-                        } else {
-                            $query->_or();
-                        }
-                        if (isset($searches['value']) && strlen($searches['value'])) {
-                            $query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
-                        }
+                    ]
+                );
+            } else {
+                $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
+                if (!$this->isNeverSearchable($query, $columnConfig) && $columnConfig->getSearchable()) {
+                    if ($isFirstFilterBy) {
+                        $query->_and();
+                        $isFirstFilterBy = false;
+                    } else {
+                        $query->_or();
                     }
-                    foreach ($orders as $order) {
-                        if (isset($order['column']) && $this->config->getIndexForColumn($columnConfig) == $order['column']) {
-                            $query->orderBy($column, $order['dir']);
-                        }
+                    if (isset($searches['value']) && strlen($searches['value'])) {
+                        $query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
+                    }
+                }
+                foreach ($orders as $order) {
+                    if (isset($order['column']) && $this->config->getIndexForColumn($columnConfig) == $order['column']) {
+                        $query->orderBy($column, $order['dir']);
                     }
                 }
             }
@@ -383,7 +383,7 @@ class PropelDataTablesDriver
                                     if ($this->itemIsCallable($callbacks, 'postEachQueryUp')) {
                                         $callbacks['postEachQueryUp']($query, $relation, $joinSetting, $join, $level);
                                     }
-                                } catch(Exception $e) {
+                                } catch (Exception $e) {
                                     $this->handleException($e);
                                 }
                                 $queryName = $foreignTable->getPhpName();
@@ -400,7 +400,7 @@ class PropelDataTablesDriver
                         $callbacks['preEachQueryUp']($query, $relation, $joinSetting, $join, $level);
                     }
                     $useFunction = sprintf('use%sQuery', $queryName);
-                    $query = $query->$useFunction($queryName  .$index . '_' . $key, JoinColumn::getPropelJoinFromJoinType($joinSetting['JoinType']));
+                    $query = $query->$useFunction($queryName . $index . '_' . $key, JoinColumn::getPropelJoinFromJoinType($joinSetting['JoinType']));
                     $count++;
                     if ($this->itemIsCallable($callbacks, 'postEachQueryUp')) {
                         $callbacks['postEachQueryUp']($query, $relation, $joinSetting, $join, $level);

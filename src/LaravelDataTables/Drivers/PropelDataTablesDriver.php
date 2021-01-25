@@ -9,6 +9,7 @@ use SevenD\LaravelDataTables\Columns\GroupedJoinColumn;
 use SevenD\LaravelDataTables\Config\DataTableConfig;
 use SevenD\LaravelDataTables\Columns\Column;
 use SevenD\LaravelDataTables\Columns\JoinColumn;
+use SevenD\LaravelDataTables\Columns\VirtualColumn;
 use Illuminate\Http\Request;
 use Propel\Runtime\ActiveQuery\Join;
 use Exception;
@@ -284,6 +285,31 @@ class PropelDataTablesDriver
 //                            }
                     ]
                 );
+            } elseif ($columnConfig instanceof VirtualColumn) {
+                $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
+                $column = sprintf('%s', $columnConfig->getColumnName());
+                $query->withColumn($columnConfig->getColumnSql(), $column);
+                if ($columnConfig->getSearchable()) {
+                    if ($isFirstFilterBy) {
+                        $query->_and();
+                        $isFirstFilterBy = false;
+                    } else {
+                        $query->_or();
+                    }
+
+                    if (isset($searches['value']) && strlen($searches['value'])) {
+                        $query->where(
+                            sprintf('%s LIKE ?', $columnConfig->getColumnSql()),
+                            sprintf('%%%s%%', $searches['value']),
+                            \PDO::PARAM_STR
+                        )->_or();
+                    }
+                }
+                foreach ($orders as $order) {
+                    if (isset($order['column']) && $this->config->getIndexForColumn($columnConfig) == $order['column']) {
+                        $query->orderBy($column, $order['dir']);
+                    }
+                }
             } else {
                 $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
                 if (!$this->isNeverSearchable($query, $columnConfig) && $columnConfig->getSearchable()) {

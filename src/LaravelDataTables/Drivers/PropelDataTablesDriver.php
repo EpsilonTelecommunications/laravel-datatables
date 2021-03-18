@@ -130,14 +130,7 @@ class PropelDataTablesDriver
                         $rowOutput[$column->getName()] = $joinModel;
 
                     } else {
-                        $eStart = microtime(true);
-                        $getFunction = sprintf('get%s', $column->getColumnName());
-                        if (method_exists($row, $getFunction)) {
-                            $rowOutput[$column->getName()] = $row->$getFunction();
-                        } else {
-                            $rowOutput[$column->getName()] = '';
-                        }
-                        $totalTimes['flatCol'] = $totalTimes['flatCol'] + (microtime(true) - $eStart);
+                        $rowOutput[$column->getName()] = $this->getFieldFromModel($row, $column->getColumnName());
                     }
 
                 } catch (Exception $e) {
@@ -164,6 +157,17 @@ class PropelDataTablesDriver
         }
 
         return $response;
+    }
+
+    private function getFieldFromModel($model, $field)
+    {
+        $getFunction = sprintf('get%s', $field);
+
+        try {
+            return $model->$getFunction();
+        } catch (\Throwable $throwable) {
+            return '';
+        }
     }
 
     private function methodExists($class, $methodName)

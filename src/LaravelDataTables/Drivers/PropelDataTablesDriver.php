@@ -93,7 +93,7 @@ class PropelDataTablesDriver
                                         }
 
                                         $getFunction = sprintf('get%s', $getterName);
-                                        if (method_exists($joinModel, $getFunction)) {
+                                        if ($joinModel && method_exists($joinModel, $getFunction)) {
                                             $joinModel = $joinModel->$getFunction();
                                             $getterChain[$column->getName()][] = $getFunction;
                                         }
@@ -113,7 +113,7 @@ class PropelDataTablesDriver
                                 break;
                             } elseif (is_array($joinModel)) {
                                 foreach ($joinModel as $jm) {
-                                    if (method_exists($jm, $getter)) {
+                                    if ($jm && method_exists($jm, $getter)) {
                                         $value = $jm->$getter();
                                         if (is_string($value) || is_numeric($value)) {
                                             $results[] = $value;
@@ -121,7 +121,7 @@ class PropelDataTablesDriver
                                     }
                                 }
                                 $joinModel = implode(', ', $results);
-                            } elseif (method_exists($joinModel, $getter)) {
+                            } elseif ($joinModel && method_exists($joinModel, $getter)) {
                                 $joinModel = $joinModel->$getter();
                             } else {
                                 $joinModel = '';
@@ -174,7 +174,7 @@ class PropelDataTablesDriver
     {
         $className = $this->getClassName($class);
         $key = sprintf('%s::%s', $className, $methodName);
-        if (!isset($this->methodExistsCache[$key])) {
+        if ($class && !isset($this->methodExistsCache[$key])) {
             $this->methodExistsCache[$key] = method_exists($class, $methodName);
         }
 

@@ -356,6 +356,12 @@ class PropelDataTablesDriver
                     PropelTypes::DATE,
                     PropelTypes::TIME,
                     PropelTypes::ENUM,
+                    PropelTypes::TINYINT,
+                    PropelTypes::SMALLINT,
+                    PropelTypes::INTEGER,
+                    PropelTypes::BIGINT,
+                    PropelTypes::DOUBLE,
+                    PropelTypes::FLOAT,
                 ]
             );
         }

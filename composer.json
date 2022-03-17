@@ -11,8 +11,7 @@
     "minimum-stability": "dev",
     "require": {
         "php": ">=7.0",
-        "laravel/framework": "^8.0|^7.0|^6.0|5.*",
-	"danielstjules/stringy": "*",
+        "laravel/framework": "^8.0",
         "league/csv": "8.*|9.*"
     },
     "autoload": {

@@ -12,7 +12,6 @@
     "require": {
         "php": ">=7.0",
         "laravel/framework": "^8.0|^7.0|^6.0|5.*",
-        "danielstjules/stringy": "^3.1",
         "league/csv": "8.*|9.*"
     },
     "autoload": {

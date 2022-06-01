@@ -121,7 +121,7 @@ class PropelDataTablesDriver
                                     }
                                 }
                                 $joinModel = implode(', ', $results);
-                            } elseif (method_exists($joinModel, $getter)) {
+                            } elseif ($joinModel && method_exists($joinModel, $getter)) {
                                 $joinModel = $joinModel->$getter();
                             } else {
                                 $joinModel = '';

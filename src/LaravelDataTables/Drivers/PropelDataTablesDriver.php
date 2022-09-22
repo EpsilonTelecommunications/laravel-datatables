@@ -241,6 +241,23 @@ class PropelDataTablesDriver
         $orders = $this->request->get('order', ['column' => 0, 'dir' => 'asc']);
 
         $query = $this->query;
+
+        foreach ($this->config->getFilters() as $filter) {
+
+            $filterValue = $this->request->get($filter->getRequestPath(), null);
+            if ($filterValue !== null && $filterValue !== '') {
+                $relationships = explode('.', $filter->getRelationshipPath());
+                $filterField = array_pop($relationships);
+                foreach ($relationships as $relationship) {
+                    $query = $query->{'use' . $relationship};
+                }
+                $query->{'filterBy' . $filterField}($filterValue, $filter->getFilterCriteria());
+                foreach ($relationships as $relationship) {
+                    $query = $query->endUse();
+                }
+            }
+        }
+
         $isFirstFilterBy = true;
 
         if (isset($searches['value']) && strlen($searches['value'])) {

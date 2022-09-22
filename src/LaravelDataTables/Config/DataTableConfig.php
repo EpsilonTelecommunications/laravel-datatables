@@ -1,5 +1,6 @@
 <?php namespace SevenD\LaravelDataTables\Config;
 
+use SevenD\LaravelDataTables\Filters\Filter;
 use SevenD\LaravelDataTables\Columns\BaseColumn;
 use SevenD\LaravelDataTables\Columns\ColumnRender;
 
@@ -11,6 +12,7 @@ abstract class DataTableConfig
     protected $columns = [];
     protected $columnsCsv = [];
     protected $sorting = [];
+    protected $filters = [];
     protected $title;
     protected $csvTitle;
     protected $timezone = 'UTC';
@@ -324,5 +326,25 @@ abstract class DataTableConfig
     {
         $this->includeConfigInResponse = $includeConfigInResponse;
         return $this;
+    }
+
+
+    public function addFilter(Filter $filter): self
+    {
+        $this->filters[$filter->getHash()] = $filter;
+
+        return $this;
+    }
+
+    public function removeFilter(Filter $filter): self
+    {
+        unset($this->filters[$filter->getHash()]);
+
+        return $this;
+    }
+
+    public function getFilters(): array
+    {
+        return $this->filters;
     }
 }

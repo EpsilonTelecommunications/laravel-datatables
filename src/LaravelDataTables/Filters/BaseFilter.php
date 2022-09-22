@@ -9,6 +9,13 @@ abstract class BaseFilter
     protected $filterCriteria;
     protected $cast;
 
+    public function __construct($relationshipPath, $requestPath)
+    {
+        $this->setRelationshipPath($relationshipPath);
+        $this->setRequestPath($relationshipPath);
+        return $this;
+    }
+
     /**
      * @return mixed
      */

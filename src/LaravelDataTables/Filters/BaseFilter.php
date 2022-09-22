@@ -12,7 +12,7 @@ abstract class BaseFilter
     public function __construct($relationshipPath, $requestPath)
     {
         $this->setRelationshipPath($relationshipPath);
-        $this->setRequestPath($relationshipPath);
+        $this->setRequestPath($requestPath);
         return $this;
     }
 

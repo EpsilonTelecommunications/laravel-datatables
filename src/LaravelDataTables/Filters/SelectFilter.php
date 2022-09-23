@@ -106,8 +106,8 @@ class SelectFilter extends FormElementFilter
 
         $select = sprintf(
             '<select2 :options="%s" :settings="%s" v-bind:value.sync="%s"></select2>',
-            json_encode($this->getOptions()),
-            json_encode($this->getSettings()),
+            $this->toJSObject($this->getOptions()),
+            $this->toJSObject($this->getSettings()),
             $this->getVBindName()
         );
 

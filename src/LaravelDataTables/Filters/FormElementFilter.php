@@ -28,6 +28,19 @@ abstract class FormElementFilter extends Filter
 
     public function getVBindName()
     {
-        return "dynamic-{$this->getHash()}";
+        return "dynamic_{$this->getHash()}";
+    }
+
+    protected function toJSObject($data)
+    {
+        $data = json_encode($data);
+        $data = str_replace('{"', '{\'', $data);
+        $data = str_replace('{"', '{\'', $data);
+        $data = str_replace('"}', '\'}', $data);
+        $data = str_replace(',"', ',\'', $data);
+        $data = str_replace('",', '\',', $data);
+        $data = str_replace('":', '\':', $data);
+        $data = str_replace(':"', ':\'', $data);
+        return $data;
     }
 }

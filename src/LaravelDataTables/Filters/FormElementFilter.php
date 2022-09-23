@@ -6,6 +6,8 @@ abstract class FormElementFilter extends Filter
 {
     protected $label = null;
 
+    abstract public function buildHtml();
+
     /**
      * @return null
      */

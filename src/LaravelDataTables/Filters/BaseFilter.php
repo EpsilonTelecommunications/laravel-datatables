@@ -90,7 +90,7 @@ abstract class BaseFilter
 
     public function getHash()
     {
-        return md5($this->requestPath, $this->relationshipPath);
+        return md5($this->requestPath . $this->relationshipPath);
     }
 
     public function castValue($value)

@@ -3,6 +3,7 @@
 use SevenD\LaravelDataTables\Filters\Filter;
 use SevenD\LaravelDataTables\Columns\BaseColumn;
 use SevenD\LaravelDataTables\Columns\ColumnRender;
+use SevenD\LaravelDataTables\Filters\FormElementFilter;
 
 abstract class DataTableConfig
 {
@@ -190,6 +191,16 @@ abstract class DataTableConfig
     public function getHtml($id, $withJson = false)
     {
         $html = [];
+
+        $html[] = '<data-table-filter>';
+
+        foreach ($this->getFilters() as $filter) {
+            if ($filter instanceof FormElementFilter) {
+                $html[] = $filter->buildHtml();
+            }
+        }
+
+        $html[] = '</data-table-filter>';
 
         $html[] = sprintf(
             '<table id="%s" class="table table-striped table-hover dataTable no-footer"%s>',

@@ -243,8 +243,7 @@ class PropelDataTablesDriver
         $query = $this->query;
 
         foreach ($this->config->getFilters() as $filter) {
-
-            $filterValue = $this->request->get($filter->getRequestPath(), null);
+            $filterValue = $filter->castValue($this->request->get($filter->getRequestPath(), null));
             if ($filterValue !== null && $filterValue !== '') {
                 $relationships = explode('.', $filter->getRelationshipPath());
                 $filterField = array_pop($relationships);

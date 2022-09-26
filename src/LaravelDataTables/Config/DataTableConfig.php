@@ -192,7 +192,8 @@ abstract class DataTableConfig
     {
         $html = [];
 
-        $html[] = '<data-table-filter>';
+        $html[] = sprintf('<data-table-filter data-table-id="%s">', $id);
+        $html[] = '<template slot="form">';
 
         foreach ($this->getFilters() as $filter) {
             if ($filter instanceof FormElementFilter) {
@@ -200,6 +201,7 @@ abstract class DataTableConfig
             }
         }
 
+        $html[] = '</template>';
         $html[] = '</data-table-filter>';
 
         $html[] = sprintf(

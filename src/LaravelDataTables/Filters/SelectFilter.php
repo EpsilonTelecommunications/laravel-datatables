@@ -5,7 +5,7 @@ namespace SevenD\LaravelDataTables\Filters;
 class SelectFilter extends FormElementFilter
 {
     protected $options;
-    protected $placeholder = null;
+    protected $placeholder = 'Please select';
     protected $allowClear = true;
     protected $multiple = false;
 
@@ -92,25 +92,26 @@ class SelectFilter extends FormElementFilter
     public function getSettings()
     {
         return collect([
-                'allowClear' => $this->isAllowClear(),
-                'placeholder' => $this->getPlaceholder(),
-            ])->filter()->toArray();
+            'allowClear' => $this->isAllowClear(),
+            'placeholder' => $this->getPlaceholder(),
+        ])->filter()->toArray();
     }
 
     public function buildHtml()
     {
         $label = sprintf(
-            '<label class="field-label text-muted fs18 mb10">%s</label>',
+            '<label class="field-label text-muted fs18 mb10">%s <span v-text="test"></span></label>',
             $this->getLabel()
         );
 
         $select = sprintf(
-            '<select2 :options="%s" :settings="%s" v-bind:value.sync="%s"></select2>',
+            '<select2 data-requestpath="%s" :options="%s" :settings="%s" v-bind:value.sync="%s"></select2>',
+            $this->getRequestPath(),
             $this->toJSObject($this->getOptions()),
             $this->toJSObject($this->getSettings()),
             $this->getVBindName()
         );
 
-        return sprintf('<div class="col-md-3 mt10">%s%s</div>', $label, $select);
+        return sprintf('<div class="col-md-3 mt10" data-dtfevbindname="%s">%s%s</div>', $this->getVBindName(), $label, $select);
     }
 }

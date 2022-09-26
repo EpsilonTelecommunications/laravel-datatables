@@ -2,9 +2,21 @@
 
 namespace SevenD\LaravelDataTables\Filters;
 
+use Illuminate\Support\Str;
+
 abstract class FormElementFilter extends Filter
 {
     protected $label = null;
+
+    public function __construct($relationshipPath, $requestPath = null)
+    {
+        parent::__construct($relationshipPath, $requestPath);
+        $this->setLabel(
+            Str::of(
+                $this->getRequestPath()
+            )->headline()
+        );
+    }
 
     abstract public function buildHtml();
 

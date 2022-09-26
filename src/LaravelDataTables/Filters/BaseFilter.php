@@ -2,6 +2,8 @@
 
 namespace SevenD\LaravelDataTables\Filters;
 
+use Illuminate\Support\Str;
+
 abstract class BaseFilter
 {
     protected $requestPath;
@@ -9,10 +11,15 @@ abstract class BaseFilter
     protected $filterCriteria;
     protected $cast;
 
-    public function __construct($relationshipPath, $requestPath)
+    public function __construct($relationshipPath, $requestPath = null)
     {
         $this->setRelationshipPath($relationshipPath);
-        $this->setRequestPath($requestPath);
+        $this->setRequestPath(
+            $requestPath ?? Str::of(
+                collect(explode('.', $relationshipPath))->last()
+            )->snake()
+
+        );
         return $this;
     }
 
@@ -104,7 +111,7 @@ abstract class BaseFilter
 
         switch ($this->getCast()) {
             case 'boolean':
-                return (bool) $value;
+                return $value === 'false' ? false : (bool) $value;
             case 'integer':
                 return (int) $value;
             case 'float':

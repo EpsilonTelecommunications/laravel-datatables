@@ -12,9 +12,11 @@ abstract class FormElementFilter extends Filter
     {
         parent::__construct($relationshipPath, $requestPath);
         $this->setLabel(
-            Str::of(
-                $this->getRequestPath()
-            )->headline()
+            ucwords(
+                Str::of(
+                    $this->getRequestPath()
+                )->snake()->replaceLast('_id', '')->replace('_', ' ')
+            )
         );
     }
 

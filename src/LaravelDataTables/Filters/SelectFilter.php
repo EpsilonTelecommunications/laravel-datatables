@@ -9,11 +9,6 @@ class SelectFilter extends FormElementFilter
     protected $allowClear = true;
     protected $multiple = false;
 
-    public function __construct($relationshipPath, $requestPath)
-    {
-        parent::__construct($relationshipPath, $requestPath);
-    }
-
     /**
      * @return mixed
      */

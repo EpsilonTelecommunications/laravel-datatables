@@ -6,6 +6,11 @@ use Illuminate\Support\Str;
 
 abstract class BaseFilter
 {
+    const CAST_BOOLEAN = 'boolean';
+    const CAST_INTEGER = 'integer';
+    const CAST_FLOAT = 'float';
+    const CAST_STRING = 'string';
+
     protected $requestPath;
     protected $relationshipPath;
     protected $filterCriteria;
@@ -110,13 +115,13 @@ abstract class BaseFilter
         }
 
         switch ($this->getCast()) {
-            case 'boolean':
+            case self::CAST_BOOLEAN:
                 return $value === 'false' ? false : (bool) $value;
-            case 'integer':
+            case self::CAST_INTEGER:
                 return (int) $value;
-            case 'float':
+            case self::CAST_FLOAT:
                 return (float) $value;
-            case 'string':
+            case self::CAST_STRING:
                 return (string) $value;
             default:
                 return $value;

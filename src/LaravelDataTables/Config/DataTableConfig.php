@@ -1,7 +1,9 @@
 <?php namespace SevenD\LaravelDataTables\Config;
 
+use SevenD\LaravelDataTables\Filters\Filter;
 use SevenD\LaravelDataTables\Columns\BaseColumn;
 use SevenD\LaravelDataTables\Columns\ColumnRender;
+use SevenD\LaravelDataTables\Filters\FormElementFilter;
 
 abstract class DataTableConfig
 {
@@ -11,6 +13,7 @@ abstract class DataTableConfig
     protected $columns = [];
     protected $columnsCsv = [];
     protected $sorting = [];
+    protected $filters = [];
     protected $title;
     protected $csvTitle;
     protected $timezone = 'UTC';
@@ -189,6 +192,22 @@ abstract class DataTableConfig
     {
         $html = [];
 
+        if (count($this->getFilters()) > 0) {
+            $html[] = sprintf('<data-table-filter data-table-id="%s">', $id);
+            $html[] = '<template slot="form">';
+        }
+
+        foreach ($this->getFilters() as $filter) {
+            if ($filter instanceof FormElementFilter) {
+                $html[] = $filter->buildHtml();
+            }
+        }
+
+        if (count($this->getFilters()) > 0) {
+            $html[] = '</template>';
+            $html[] = '</data-table-filter>';
+        }
+
         $html[] = sprintf(
             '<table id="%s" class="table table-striped table-hover dataTable no-footer"%s>',
             $id,
@@ -324,5 +343,25 @@ abstract class DataTableConfig
     {
         $this->includeConfigInResponse = $includeConfigInResponse;
         return $this;
+    }
+
+
+    public function addFilter(Filter $filter): self
+    {
+        $this->filters[$filter->getHash()] = $filter;
+
+        return $this;
+    }
+
+    public function removeFilter(Filter $filter): self
+    {
+        unset($this->filters[$filter->getHash()]);
+
+        return $this;
+    }
+
+    public function getFilters(): array
+    {
+        return $this->filters;
     }
 }

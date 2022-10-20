@@ -1,6 +1,6 @@
 <?php namespace SevenD\LaravelDataTables\Columns;
 
-use Stringy\Stringy;
+use Illuminate\Support\Str;
 
 abstract class BaseColumn
 {
@@ -42,7 +42,7 @@ abstract class BaseColumn
 
         if (is_null($this->getName())) {
             $this->setName($value);
-            $name = (string) Stringy::create($value)->underscored()->humanize();
+            $name = (string) Str::of($value)->snake()->ucfirst()->replace('_', ' ');
             $this->setTitle($name);
         }
 

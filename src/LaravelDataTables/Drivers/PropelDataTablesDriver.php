@@ -93,7 +93,7 @@ class PropelDataTablesDriver
                                         }
 
                                         $getFunction = sprintf('get%s', $getterName);
-                                        if (method_exists($joinModel, $getFunction)) {
+                                        if ($joinModel && method_exists($joinModel, $getFunction)) {
                                             $joinModel = $joinModel->$getFunction();
                                             $getterChain[$column->getName()][] = $getFunction;
                                         }
@@ -113,7 +113,7 @@ class PropelDataTablesDriver
                                 break;
                             } elseif (is_array($joinModel)) {
                                 foreach ($joinModel as $jm) {
-                                    if (method_exists($jm, $getter)) {
+                                    if ($jm && method_exists($jm, $getter)) {
                                         $value = $jm->$getter();
                                         if (is_string($value) || is_numeric($value)) {
                                             $results[] = $value;
@@ -174,7 +174,7 @@ class PropelDataTablesDriver
     {
         $className = $this->getClassName($class);
         $key = sprintf('%s::%s', $className, $methodName);
-        if (!isset($this->methodExistsCache[$key])) {
+        if ($class && !isset($this->methodExistsCache[$key])) {
             $this->methodExistsCache[$key] = method_exists($class, $methodName);
         }
 
@@ -241,38 +241,39 @@ class PropelDataTablesDriver
         $orders = $this->request->get('order', ['column' => 0, 'dir' => 'asc']);
 
         $query = $this->query;
+
+        foreach ($this->config->getFilters() as $filter) {
+            $rawFilterValue = $this->request->get($filter->getRequestPath(), null);
+            if ($rawFilterValue !== null && $rawFilterValue !== '') {
+                $filterValue = $filter->castValue($rawFilterValue);
+                $relationships = explode('.', $filter->getRelationshipPath());
+                $filterField = array_pop($relationships);
+                foreach ($relationships as $relationship) {
+                    $query = $query->{'use' . $relationship};
+                }
+                $query->{'filterBy' . $filterField}($filterValue, $filter->getFilterCriteria());
+                foreach ($relationships as $relationship) {
+                    $query = $query->endUse();
+                }
+            }
+        }
+
         $isFirstFilterBy = true;
+
+        if (isset($searches['value']) && strlen($searches['value'])) {
+            $query->_and()
+                ->where('1 = ?', 0, \PDO::PARAM_INT)
+                ->_or();
+        }
+
         foreach ($this->config->getColumns() as $key => $columnConfig) {
             if ($columnConfig instanceof JoinColumn) {
                 $query = $this->traverseQuery(
                     $columnConfig,
                     [
-//                            'beforeAll' => function (&$query, $level) use ($c) {
-//                                if ($c == 0) {
-//	                                $query->_and();
-//	                            }
-//                            },
-//                            'preEachQueryUp' => function (&$query, $relation, $joinSetting, $join, $level) use ($c)  {
-//                                ($c == 0 && $level == 0) ? $query->_and() : $query->_or();
-//                            },
-//                            'postEachQueryUp' => function (&$query) {
-//                                $query->_or();
-//                            },
-//                            'preEachQueryDown' => function (&$query) {
-//                                $query->_or();
-//                            },
-//                            'postEachQueryDown' => function (&$query) {
-//                                $query->_or();
-//                            },
                         'topJoin' => function (&$query, &$join, $relation) use ($searches, $orders, &$isFirstFilterBy) {
                             if (!$this->isNeverSearchable($query, $join) && $join->getSearchable()) {
                                 if (isset($searches['value']) && strlen($searches['value'])) {
-                                    if ($isFirstFilterBy) {
-                                        $query->_and();
-                                        $isFirstFilterBy = false;
-                                    } else {
-                                        $query->_or();
-                                    }
                                     $query->filterBy($join->getColumnName(), sprintf('%%%s%%', $searches['value']), Criteria::LIKE)->_or();
                                 }
                             }
@@ -284,9 +285,6 @@ class PropelDataTablesDriver
                                 }
                             }
                         },
-//                            'afterAll' => function (&$query) {
-//                                $query->_or();
-//                            }
                     ]
                 );
             } elseif ($columnConfig instanceof VirtualColumn) {
@@ -294,13 +292,6 @@ class PropelDataTablesDriver
                 $column = sprintf('%s', $columnConfig->getColumnName());
                 $query->withColumn($columnConfig->getColumnSql(), $column);
                 if ($columnConfig->getSearchable()) {
-                    if ($isFirstFilterBy) {
-                        $query->_and();
-                        $isFirstFilterBy = false;
-                    } else {
-                        $query->_or();
-                    }
-
                     if (isset($searches['value']) && strlen($searches['value'])) {
                         $query->where(
                             sprintf('%s LIKE ?', $columnConfig->getColumnSql()),
@@ -317,12 +308,6 @@ class PropelDataTablesDriver
             } else {
                 $column = sprintf('%s.%s', $query->getTableMap()->getPhpName(), $columnConfig->getColumnName());
                 if (!$this->isNeverSearchable($query, $columnConfig) && $columnConfig->getSearchable()) {
-                    if ($isFirstFilterBy) {
-                        $query->_and();
-                        $isFirstFilterBy = false;
-                    } else {
-                        $query->_or();
-                    }
                     if (isset($searches['value']) && strlen($searches['value'])) {
                         $query->where(sprintf('%s LIKE ?', $column), sprintf('%%%s%%', $searches['value']))->_or();
                     }
@@ -356,6 +341,12 @@ class PropelDataTablesDriver
                     PropelTypes::DATE,
                     PropelTypes::TIME,
                     PropelTypes::ENUM,
+                    PropelTypes::TINYINT,
+                    PropelTypes::SMALLINT,
+                    PropelTypes::INTEGER,
+                    PropelTypes::BIGINT,
+                    PropelTypes::DOUBLE,
+                    PropelTypes::FLOAT,
                 ]
             );
         }

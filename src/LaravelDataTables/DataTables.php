@@ -108,8 +108,11 @@ class DataTables
         foreach ($response['data'] as $key => $data) {
             foreach ($columns as $subkey => $column) {
                 if ($column->getRender() instanceof ColumnRender) {
+                    $render = $column->getRender()->getRender();
                     $renderData = array_merge($column->getRender()->getRenderData(), $data);
-                    $response['data'][$key][$subkey] = View::make($column->getRender()->getRender())->with($renderData)->render();
+                    $response['data'][$key][$subkey] = is_array($render) ?
+                        Blade::render($render['template'], $renderData) :
+                        Blade::render($render, $renderData);
                 } elseif($response['data'][$key][$subkey] instanceof DateTime) {
                     $response['data'][$key][$subkey] = $response['data'][$key][$subkey]->setTimezone($this->config->getTimezone())->format($column->getDateFormat());
                 }

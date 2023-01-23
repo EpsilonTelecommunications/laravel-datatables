@@ -1,4 +1,4 @@
-<?php namespace SevenD\LaraveLDataTables\Exceptions;
+<?php namespace SevenD\LaravelDataTables\Exceptions;
 
 use Exception;
 

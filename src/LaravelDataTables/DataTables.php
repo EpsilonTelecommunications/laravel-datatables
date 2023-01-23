@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Blade;
 use SevenD\LaravelDataTables\Columns\ColumnRender;
 use SevenD\LaravelDataTables\Columns\GroupedJoinColumn;
 use SevenD\LaravelDataTables\Config\DataTableConfig;
-use SevenD\LaraveLDataTables\Exceptions\NoDriverFoundException;
+use SevenD\LaravelDataTables\Exceptions\NoDriverFoundException;
 use Illuminate\Http\Request;
 use League\Csv\Writer;
 use SplTempFileObject;
@@ -136,7 +136,7 @@ class DataTables
 
         $writer->insertAll(array_merge([$headers], $response['data']));
 
-        return $writer->__toString();
+        return $writer->toString();
     }
 
     private function loadDriver()

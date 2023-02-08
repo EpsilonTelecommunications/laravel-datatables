@@ -8,6 +8,7 @@ class SelectFilter extends FormElementFilter
     protected $placeholder = 'Please select';
     protected $allowClear = true;
     protected $multiple = false;
+    protected $defaultOption;
 
     /**
      * @return mixed
@@ -100,13 +101,41 @@ class SelectFilter extends FormElementFilter
         );
 
         $select = sprintf(
-            '<select2 data-requestpath="%s" :options="%s" :settings="%s" v-bind:value.sync="%s"></select2>',
+            '<select2 data-requestpath="%s" data-defaultvalue="%s" :options="%s" :settings="%s" v-bind:value.sync="%s"></select2>',
             $this->getRequestPath(),
+            $this->getDefaultOption(),
             $this->toJSObject($this->getOptions()),
             $this->toJSObject($this->getSettings()),
             $this->getVBindName()
         );
 
         return sprintf('<div class="col-md-3 mt10" data-dtfevbindname="%s">%s%s</div>', $this->getVBindName(), $label, $select);
+    }
+
+
+    /**
+     * @return mixed
+     */
+    public function getDefaultOption()
+    {
+        return $this->defaultOption;
+    }
+
+    /**
+     * @param mixed $defaultOption
+     * @return SelectFilter
+     */
+    public function setDefaultOption($defaultOption)
+    {
+        $this->defaultOption = $defaultOption;
+        return $this;
+    }
+
+    public function setDefaultByIndex($index)
+    {
+        $this->setDefaultOption(
+            data_get(collect($this->options)->get($index), 'id')
+        );
+        return $this;
     }
 }

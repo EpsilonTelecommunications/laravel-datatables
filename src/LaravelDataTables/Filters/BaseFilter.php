@@ -3,6 +3,7 @@
 namespace SevenD\LaravelDataTables\Filters;
 
 use Illuminate\Support\Str;
+use PDO;
 
 abstract class BaseFilter
 {
@@ -125,6 +126,22 @@ abstract class BaseFilter
                 return (string) $value;
             default:
                 return $value;
+        }
+    }
+
+    public function getPdoParam()
+    {
+        switch ($this->getCast()) {
+            case self::CAST_BOOLEAN:
+                return PDO::PARAM_BOOL;
+            case self::CAST_INTEGER:
+                return PDO::PARAM_INT;
+            case self::CAST_FLOAT:
+                return PDO::PARAM_STR;
+            case self::CAST_STRING:
+                return PDO::PARAM_STR;
+            default:
+                return PDO::PARAM_STR;
         }
     }
 }

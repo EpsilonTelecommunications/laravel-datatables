@@ -90,6 +90,7 @@ class SelectFilter extends FormElementFilter
         return collect([
             'allowClear' => $this->isAllowClear(),
             'placeholder' => $this->getPlaceholder(),
+            'multiple' => $this->isMultiple(),
         ])->filter()->toArray();
     }
 

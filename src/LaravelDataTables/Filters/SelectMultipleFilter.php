@@ -19,7 +19,7 @@ class SelectMultipleFilter extends SelectFilter
         return $this->getTemplate();
     }
 
-    public function setTemplate($htmlTemplate): static
+    public function setTemplate(string $htmlTemplate): static
     {
         $this->template = $htmlTemplate;
         return $this;

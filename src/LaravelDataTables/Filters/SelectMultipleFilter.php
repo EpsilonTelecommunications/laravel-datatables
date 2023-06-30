@@ -14,25 +14,8 @@ class SelectMultipleFilter extends SelectFilter
         ]);
     }
 
-    public function buildHtml(): string
-    {
-        return $this->getTemplate();
-    }
-
-    public function setTemplate(string $htmlTemplate): static
-    {
-        $this->template = $htmlTemplate;
-        return $this;
-    }
-
-    public function getTemplate(): string
-    {
-        return $this->template ?? parent::buildHtml();
-    }
-
     protected function toJSObject($data)
     {
         return e(json_encode($data));
     }
-
 }

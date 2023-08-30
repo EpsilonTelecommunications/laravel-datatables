@@ -18,6 +18,7 @@ abstract class DataTableConfig
     protected $csvTitle;
     protected $timezone = 'UTC';
     protected $includeConfigInResponse = false;
+    protected  $filterInfoMessage = null;
 
     public function __construct()
     {
@@ -197,6 +198,15 @@ abstract class DataTableConfig
             $html[] = '<template slot="form">';
         }
 
+        if ($this->getFilterInfoMessage()) {
+            $html[] = '<div class="col-md-12">';
+            $html[] = '<div class="alert alert-info mbn">';
+            $html[] = '<i class="fa fa-info-circle mr5"></i>';
+            $html[] = $this->getFilterInfoMessage();
+            $html[] = '</div>';
+            $html[] = '</div>';
+        }
+
         foreach ($this->getFilters() as $filter) {
             if ($filter instanceof FormElementFilter) {
                 $html[] = $filter->buildHtml();
@@ -363,5 +373,15 @@ abstract class DataTableConfig
     public function getFilters(): array
     {
         return $this->filters;
+    }
+
+    public function getFilterInfoMessage(): ?string
+    {
+        return $this->filterInfoMessage;
+    }
+
+    public function setFilterInfoMessage(?string $filterInfoMessage): void
+    {
+        $this->filterInfoMessage = $filterInfoMessage;
     }
 }

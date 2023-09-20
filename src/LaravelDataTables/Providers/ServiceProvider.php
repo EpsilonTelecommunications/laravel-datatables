@@ -1,11 +1,18 @@
 <?php namespace SevenD\LaravelDataTables\Providers;
 
+use App\Jobs\DataTablesCsvExport;
+use App\Mail\DataTablesCsvEmail;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider as LaravelServiceProvider;
+use Opis\Closure\SerializableClosure;
 use SevenD\LaravelDataTables\DataTables;
 use Carbon\Carbon;
 use Response;
 use Request;
 use Storage;
+use Auth;
+use Opis\Closure;
+use Throwable;
 
 class ServiceProvider extends LaravelServiceProvider
 {
@@ -24,14 +31,52 @@ class ServiceProvider extends LaravelServiceProvider
             $dataTable->setConfig($configuration);
             $request = Request::duplicate();
 
-            if ($request->get('csv') == 'prepare') {
+            if (in_array($request->get('csv'), ['prepare', 'email'])) {
                 $request->merge([
                     'start' => null,
                     'length' => null,
                 ]);
 
-                $csv = $dataTable->setRequest($request)
-                    ->makeResponseCsv();
+                $dataTable->setRequest($request);
+
+                if($request->get('csv') == 'email') {
+                    $user = Auth::user();
+                    $params = [
+                        'userId' => $user->getId(),
+                        'configuration' => $configuration,
+                        'filters' => $request->all(),
+                        'title' => $dataTable->getConfig()->getTitle() ??
+                            preg_replace('|^(.*?)DataTable$|s', '$1', basename(get_class($configuration))),
+                    ];
+
+                    dispatch(function () use ($params) {
+                        //TODO: discuss on resource limits
+                        // & error handling when exceeded
+                        ini_set('memory_limit','2G');
+                        set_time_limit(20*60);
+
+                        $dataTable = new DataTables;
+                        $dataTable->setConfig($params['configuration']);
+                        $request = (new \Illuminate\Http\Request())->merge($params['filters']);
+                        $request->merge([
+                            'start' => null,
+                            'length' => null,
+                        ]);
+
+                        $dataTable->setRequest($request);
+                        $csvData = $dataTable->makeResponseCsv();
+
+                        Mail::send(new DataTablesCsvEmail($params['userId'], $params['title'], $csvData));
+                    })->catch(function (Throwable $e) {
+                        //TODO:???
+                    });
+
+                    return Response::json([
+                        'success' => true,
+                    ]);
+                }
+
+                $csv = $dataTable->makeResponseCsv();
 
                 $hash = md5(microtime(true) . serialize($request->all()));
 

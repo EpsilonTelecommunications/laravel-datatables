@@ -1,6 +1,5 @@
 <?php namespace SevenD\LaravelDataTables\Providers;
 
-use App\Jobs\DataTablesCsvExport;
 use App\Mail\DataTablesCsvEmail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider as LaravelServiceProvider;

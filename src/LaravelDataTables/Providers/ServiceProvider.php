@@ -1,9 +1,7 @@
 <?php namespace SevenD\LaravelDataTables\Providers;
 
-use App\Mail\DataTablesCsvEmail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider as LaravelServiceProvider;
-use Opis\Closure\SerializableClosure;
 use SevenD\LaravelDataTables\DataTables;
 use Carbon\Carbon;
 use Response;
@@ -44,8 +42,6 @@ class ServiceProvider extends LaravelServiceProvider
                         'userId' => $user->getId(),
                         'configuration' => $configuration,
                         'filters' => $request->all(),
-                        'title' => $dataTable->getConfig()->getTitle() ??
-                            preg_replace('|^(.*?)DataTable$|s', '$1', basename(get_class($configuration))),
                     ];
 
                     dispatch(function () use ($params) {
@@ -65,7 +61,13 @@ class ServiceProvider extends LaravelServiceProvider
                         $dataTable->setRequest($request);
                         $csvData = $dataTable->makeResponseCsv();
 
-                        Mail::send(new DataTablesCsvEmail($params['userId'], $params['title'], $csvData));
+                        $mailable = config('laravel-datatables.mailable-class', \Illuminate\Mail\Mailable::class);
+
+                        Mail::send(new $mailable(
+                            $params['userId'],
+                            $dataTable->getConfig()->getTitle(),
+                            $csvData
+                        ));
                     })->catch(function (Throwable $e) {
                         //TODO:???
                     });
@@ -114,6 +116,10 @@ class ServiceProvider extends LaravelServiceProvider
                 );
             }
         });
+
+        $this->publishes([
+            __DIR__.'/../../../config/laravel-datatables.php' => config_path('laravel-datatables.php'),
+        ]);
     }
 
     /**

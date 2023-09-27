@@ -1,5 +1,6 @@
 <?php namespace SevenD\LaravelDataTables\Config;
 
+use Illuminate\Support\Str;
 use SevenD\LaravelDataTables\Filters\Filter;
 use SevenD\LaravelDataTables\Columns\BaseColumn;
 use SevenD\LaravelDataTables\Columns\ColumnRender;
@@ -35,7 +36,7 @@ abstract class DataTableConfig
 
     public function getTitle()
     {
-        return $this->title;
+        return $this->title ?? Str::before(basename(static::class), 'DataTable');
     }
 
     public function setTitle($title)

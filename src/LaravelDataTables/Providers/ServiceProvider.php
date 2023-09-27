@@ -44,11 +44,11 @@ class ServiceProvider extends LaravelServiceProvider
                         'filters' => $request->all(),
                     ];
 
-                    dispatch(function () use ($params) {
-                        //TODO: discuss on resource limits
-                        // & error handling when exceeded
+                    dispatch(function () use ($params, $user) {
                         ini_set('memory_limit','2G');
-                        set_time_limit(20*60);
+                        set_time_limit(0);
+
+                        Auth::authAsSystemThen($user);
 
                         $dataTable = new DataTables;
                         $dataTable->setConfig($params['configuration']);
@@ -69,7 +69,7 @@ class ServiceProvider extends LaravelServiceProvider
                             $csvData
                         ));
                     })->catch(function (Throwable $e) {
-                        //TODO:???
+                        \Log::error($e->getMessage());
                     });
 
                     return Response::json([

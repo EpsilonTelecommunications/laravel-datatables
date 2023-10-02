@@ -36,7 +36,7 @@ abstract class DataTableConfig
 
     public function getTitle()
     {
-        return $this->title ?? Str::before(basename(static::class), 'DataTable');
+        return $this->title ?? Str::beforeLast(basename(Str::afterLast(static::class', '\\')), 'DataTable');
     }
 
     public function setTitle($title)

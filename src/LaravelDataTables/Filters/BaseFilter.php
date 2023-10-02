@@ -16,6 +16,7 @@ abstract class BaseFilter
     protected $relationshipPath;
     protected $filterCriteria;
     protected $cast;
+    protected string $cssCol = 'col-md-3';
 
     public function __construct($relationshipPath, $requestPath = null)
     {
@@ -98,6 +99,21 @@ abstract class BaseFilter
     public function setCast($cast)
     {
         $this->cast = $cast;
+        return $this;
+    }
+
+    public function getCssCol(): string
+    {
+        return $this->cssCol;
+    }
+
+    /**
+     * @param string $cssCol
+     * @return BaseFilter
+     */
+    public function setCssCol(string $cssCol)
+    {
+        $this->cssCol = $cssCol;
         return $this;
     }
 

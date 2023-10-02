@@ -1,5 +1,6 @@
 <?php namespace SevenD\LaravelDataTables\Drivers;
 
+use Illuminate\Support\Collection;
 use Propel\Generator\Model\PropelTypes;
 use Propel\Runtime\ActiveQuery\Criteria;
 use Propel\Runtime\Collection\ObjectCollection;
@@ -248,6 +249,10 @@ class PropelDataTablesDriver
                 $filterValue = $filter->castValue($rawFilterValue);
                 $relationships = explode('.', $filter->getRelationshipPath());
                 $filterField = array_pop($relationships);
+                if (is_string($filter->getRequestPath()) && array_key_exists($filter->getRequestPath(), $query->getAsColumns()) && $filterValue instanceof Collection) {
+                    $query->addUsingAlias($filter->getRelationshipPath(), $filterValue->all(), Criteria::IN);
+                    continue;
+                }
                 foreach ($relationships as $relationship) {
                     $query = $query->{'use' . $relationship};
                 }

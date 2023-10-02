@@ -109,7 +109,11 @@ class SelectFilter extends FormElementFilter
             $this->getVBindName()
         );
 
-        return sprintf('<div class="col-md-3 mt10" data-dtfevbindname="%s">%s%s</div>', $this->getVBindName(), $label, $select);
+        return sprintf('<div class="%s mt10" data-dtfevbindname="%s">%s%s</div>',
+            $this->getCssCol(),
+            $this->getVBindName(),
+            $label,
+            $select);
     }
 
 

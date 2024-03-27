@@ -47,12 +47,8 @@ abstract class FormElementFilter extends Filter
 
     protected function toJSObject($data)
     {
-        $data = collect($data)
-            ->map(function ($item) {
-                return str_replace("'", "\'", $item);
-            })
-            ->toJson();
-
+        $data = json_encode($data);
+        $data = str_replace("'", '\\\'', $data);
         $data = str_replace('{"', '{\'', $data);
         $data = str_replace('{"', '{\'', $data);
         $data = str_replace('"}', '\'}', $data);
@@ -60,6 +56,7 @@ abstract class FormElementFilter extends Filter
         $data = str_replace('",', '\',', $data);
         $data = str_replace('":', '\':', $data);
         $data = str_replace(':"', ':\'', $data);
+
         return $data;
     }
 }

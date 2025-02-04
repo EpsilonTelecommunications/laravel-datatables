@@ -20,7 +20,7 @@ class DataTables
         '\Propel\Runtime\ActiveQuery\ModelCriteria' => 'SevenD\LaravelDataTables\Drivers\PropelDataTablesDriver',
     ];
 
-    public function __construct(DataTableConfig $config = null, Request $request = null)
+    public function __construct(?DataTableConfig $config = null, ?Request $request = null)
     {
         if ($config) {
             $this->setConfig($config);

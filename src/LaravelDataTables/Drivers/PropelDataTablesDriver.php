@@ -254,7 +254,7 @@ class PropelDataTablesDriver
                     continue;
                 }
                 foreach ($relationships as $relationship) {
-                    $query = $query->{'use' . $relationship};
+                    $query = $query->{'use' . $relationship . 'Query'}();
                 }
                 if ($query->getTableMap()->hasColumn($filterField)) {
                     $query->{'filterBy' . $filterField}($filterValue, $filter->getFilterCriteria());

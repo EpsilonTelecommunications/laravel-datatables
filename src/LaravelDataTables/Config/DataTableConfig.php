@@ -47,7 +47,7 @@ abstract class DataTableConfig
 
     public function getCsvTitle()
     {
-        return (is_null($this->csvTitle)) ? $this->csvTitle : $this->getTitle();
+        return ! is_null($this->csvTitle) ? $this->csvTitle : $this->getTitle();
     }
 
     public function setCsvTitle($csvTitle)

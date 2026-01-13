@@ -93,7 +93,7 @@ class DateRangeFilter extends FormElementFilter
         );
 
         $from = sprintf(
-            '<date-picker data-requestpath="%s[0]" :with-time="%s" :placeholder="%s" class="gui-input"></date-picker>',
+            '<date-picker data-requestpath="%s[0]" :with-time="%s" placeholder="%s" class="gui-input"></date-picker>',
             $this->getRequestPath(),
             $this->isWithTime() ? 'true' : 'false',
             $this->getPlaceholderFrom()
@@ -105,7 +105,7 @@ class DateRangeFilter extends FormElementFilter
         );
 
         $to = sprintf(
-            '<date-picker data-requestpath="%s[1]" :with-time="%s" :placeholder="%s" class="gui-input"></date-picker>',
+            '<date-picker data-requestpath="%s[1]" :with-time="%s" placeholder="%s" class="gui-input"></date-picker>',
             $this->getRequestPath(),
             $this->isWithTime() ? 'true' : 'false',
             $this->getPlaceholderTo()

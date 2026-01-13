@@ -7,6 +7,7 @@ use PDO;
 
 abstract class BaseFilter
 {
+    const CAST_DATETIME = 'datetime';
     const CAST_BOOLEAN = 'boolean';
     const CAST_INTEGER = 'integer';
     const CAST_FLOAT = 'float';
@@ -23,8 +24,8 @@ abstract class BaseFilter
         $this->setRelationshipPath($relationshipPath);
         $this->setRequestPath(
             $requestPath ?? Str::of(
-                collect(explode('.', $relationshipPath))->last()
-            )->snake()
+            collect(explode('.', $relationshipPath))->last()
+        )->snake()
 
         );
         return $this;
@@ -127,11 +128,13 @@ abstract class BaseFilter
         if (is_array($value)) {
             return collect($value)
                 ->map(function ($item) {
-                    return $this->castValue($item);
+                    return self::castValue($item);
                 });
         }
 
         switch ($this->getCast()) {
+            case self::CAST_DATETIME:
+                return new \DateTime($value);
             case self::CAST_BOOLEAN:
                 return $value === 'false' ? false : (bool) $value;
             case self::CAST_INTEGER:

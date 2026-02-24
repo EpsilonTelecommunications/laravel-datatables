@@ -38,17 +38,22 @@ class ServiceProvider extends LaravelServiceProvider
 
                 if($request->get('csv') == 'email') {
                     $user = Auth::user();
+                    $customer = method_exists(Auth::guard(), 'getCustomer') ? Auth::getCustomer() : null;
+
                     $params = [
                         'userId' => $user->getId(),
                         'configuration' => $configuration,
                         'filters' => $request->all(),
                     ];
 
-                    dispatch(function () use ($params, $user) {
+                    dispatch(function () use ($params, $user, $customer) {
                         ini_set('memory_limit','2G');
                         set_time_limit(0);
 
-                        Auth::authAsSystemThen($user);
+                        app()->call(
+                            [Auth::guard(), 'authAsSystemThen'],
+                            ['user' => $user, 'customer' => $customer]
+                        );
 
                         $dataTable = new DataTables;
                         $dataTable->setConfig($params['configuration']);

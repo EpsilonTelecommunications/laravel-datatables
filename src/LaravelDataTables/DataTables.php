@@ -103,7 +103,7 @@ class DataTables
 
         $response = $this->driver->makeResponse();
 
-        $writer = Writer::createFromFileObject(new SplTempFileObject());
+        $writer = Writer::from(new SplTempFileObject());
 
         foreach ($response['data'] as $key => $data) {
             foreach ($columns as $subkey => $column) {

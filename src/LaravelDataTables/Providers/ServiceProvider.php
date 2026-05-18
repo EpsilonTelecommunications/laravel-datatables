@@ -73,8 +73,16 @@ class ServiceProvider extends LaravelServiceProvider
                             $dataTable->getConfig()->getTitle(),
                             $csvData
                         ));
-                    })->catch(function (Throwable $e) {
+                    })->catch(function (Throwable $e) use ($configuration, $user, $customer) {
                         \Log::error($e->getMessage());
+
+                        if ($mailableFailure = config('laravel-datatables.mailable-failure-class')) {
+                            Mail::send(new $mailableFailure(
+                                $user,
+                                $customer,
+                                $configuration
+                            ));
+                        }
                     });
 
                     return Response::json([

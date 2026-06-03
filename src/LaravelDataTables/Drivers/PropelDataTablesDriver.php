@@ -243,9 +243,22 @@ class PropelDataTablesDriver
 
         $query = $this->query;
 
+        $validateRawValue = function ($value): bool {
+            if ($value === null) {
+                return false;
+            }
+            if ($value === '') {
+                return false;
+            }
+            if (is_array($value)) {
+                return !empty(array_filter($value));
+            }
+            return true;
+        };
+
         foreach ($this->config->getFilters() as $filter) {
             $rawFilterValue = $this->request->get($filter->getRequestPath(), null);
-            if ($rawFilterValue !== null && $rawFilterValue !== '') {
+            if ($validateRawValue($rawFilterValue)) {
                 $filterValue = $filter->castValue($rawFilterValue);
                 $relationships = explode('.', $filter->getRelationshipPath());
                 $filterField = array_pop($relationships);
@@ -254,7 +267,7 @@ class PropelDataTablesDriver
                     continue;
                 }
                 foreach ($relationships as $relationship) {
-                    $query = $query->{'use' . $relationship};
+                    $query = $query->{'use' . $relationship . 'Query'}();
                 }
                 if ($query->getTableMap()->hasColumn($filterField)) {
                     $query->{'filterBy' . $filterField}($filterValue, $filter->getFilterCriteria());

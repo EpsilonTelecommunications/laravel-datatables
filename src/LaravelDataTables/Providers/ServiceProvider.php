@@ -38,17 +38,22 @@ class ServiceProvider extends LaravelServiceProvider
 
                 if($request->get('csv') == 'email') {
                     $user = Auth::user();
+                    $customer = method_exists(Auth::guard(), 'getCustomer') ? Auth::getCustomer() : null;
+
                     $params = [
                         'userId' => $user->getId(),
                         'configuration' => $configuration,
                         'filters' => $request->all(),
                     ];
 
-                    dispatch(function () use ($params, $user) {
+                    dispatch(function () use ($params, $user, $customer) {
                         ini_set('memory_limit','2G');
                         set_time_limit(0);
 
-                        Auth::authAsSystemThen($user);
+                        app()->call(
+                            [Auth::guard(), 'authAsSystemThen'],
+                            ['user' => $user, 'customer' => $customer]
+                        );
 
                         $dataTable = new DataTables;
                         $dataTable->setConfig($params['configuration']);
@@ -68,8 +73,16 @@ class ServiceProvider extends LaravelServiceProvider
                             $dataTable->getConfig()->getTitle(),
                             $csvData
                         ));
-                    })->catch(function (Throwable $e) {
+                    })->catch(function (Throwable $e) use ($configuration, $user, $customer) {
                         \Log::error($e->getMessage());
+
+                        if ($mailableFailure = config('laravel-datatables.mailable-failure-class')) {
+                            Mail::send(new $mailableFailure(
+                                $user,
+                                $customer,
+                                $configuration
+                            ));
+                        }
                     });
 
                     return Response::json([
